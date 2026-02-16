@@ -16,7 +16,7 @@ init_db()
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -26,8 +26,8 @@ app.include_router(people.router)
 
 @app.post("/token")
 async def login_for_access_token(
-    db: Session = Depends(get_db),
-    form_data: OAuth2PasswordRequestForm = Depends()
+    db: Annotated[Session, Depends(get_db)],
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
 ):
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:
