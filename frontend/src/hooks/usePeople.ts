@@ -3,20 +3,7 @@
 import { useState, useEffect } from "react";
 import type { Teacher, Student, Instrument, Enrollment, AvailabilitySlot } from "@/types/people";
 
-function toCamel(obj: any): any {
-    if (Array.isArray(obj)) {
-        return obj.map(v => toCamel(v));
-    } else if (obj !== null && obj.constructor === Object) {
-        return Object.keys(obj).reduce(
-            (result, key) => ({
-                ...result,
-                [key.replace(/(_\w)/g, k => k[1].toUpperCase())]: toCamel(obj[key]),
-            }),
-            {},
-        );
-    }
-    return obj;
-}
+import { toCamel } from "@/lib/utils";
 
 export function usePeople() {
     const [teachers, setTeachers] = useState<Teacher[]>([]);

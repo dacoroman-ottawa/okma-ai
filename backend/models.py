@@ -147,6 +147,8 @@ class Class(Base):
     start_time = Column(String)
     duration = Column(Integer)
     type = Column(Enum(ClassTypeEnum))
+    frequency = Column(Integer, default=1)
+    notes = Column(String)
     status = Column(Enum(ClassStatusEnum), default=ClassStatusEnum.SCHEDULED)
 
     teacher = relationship("Teacher", back_populates="classes")
@@ -265,3 +267,14 @@ class SkillLevel(Base):
 
     student = relationship("Student", back_populates="skill_levels")
     instrument = relationship("Instrument")
+
+class AttendanceRecord(Base):
+    __tablename__ = "attendance_records"
+    id = Column(String, primary_key=True)
+    class_id = Column(String, ForeignKey("classes.id"))
+    student_id = Column(String, ForeignKey("students.id"))
+    date = Column(Date, nullable=False)
+    attended = Column(Boolean, nullable=False)
+
+    class_ = relationship("Class")
+    student = relationship("Student")

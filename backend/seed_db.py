@@ -3,7 +3,11 @@ import uuid
 from datetime import datetime
 from sqlalchemy.orm import Session
 from .database import SessionLocal, init_db, engine
-from .models import Base, AppUser, Teacher, Student, Instrument, UserRoleEnum, QualificationEnum, SkillLevelEnum, SkillLevel, AvailabilitySlot, Enrollment
+from .models import (
+    Base, AppUser, Teacher, Student, Instrument, UserRoleEnum, 
+    QualificationEnum, SkillLevelEnum, SkillLevel, AvailabilitySlot, 
+    Enrollment, Class, AttendanceRecord, ClassTypeEnum, ClassStatusEnum
+)
 
 def seed_data():
     # Drop all and recreate for a clean seed
@@ -140,6 +144,40 @@ def seed_data():
                 end_time=slot["endTime"]
             )
             db.add(new_slot)
+
+    # 8. Seed Classes
+    with open("product-plan/sections/classes/sample-data.json", "r") as f:
+        class_data = json.load(f)
+
+    for cls in class_data["classes"]:
+        new_class = Class(
+            id=cls["id"],
+            teacher_id=cls["teacherId"],
+            instrument_id=cls["instrumentId"],
+            weekday=cls["weekday"],
+            start_time=cls["startTime"],
+            duration=cls["duration"],
+            frequency=cls["frequency"],
+            type=ClassTypeEnum(cls["type"]),
+            status=ClassStatusEnum(cls["status"]),
+            notes=cls["notes"]
+        )
+        # Add students
+        for sid in cls["studentIds"]:
+            if sid in students_map:
+                new_class.students.append(students_map[sid])
+        db.add(new_class)
+
+    # 9. Seed Attendance
+    for att in class_data["attendanceRecords"]:
+        new_att = AttendanceRecord(
+            id=att["id"],
+            class_id=att["classId"],
+            student_id=att["studentId"],
+            date=datetime.strptime(att["date"], "%Y-%m-%d").date(),
+            attended=att["attended"]
+        )
+        db.add(new_att)
 
     db.commit()
     print("Database seeded successfully!")
