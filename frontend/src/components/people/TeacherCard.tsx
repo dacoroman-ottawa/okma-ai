@@ -16,12 +16,13 @@ export function TeacherCard({
   onView,
   onEdit,
 }: TeacherCardProps) {
-  const instrumentNames = teacher.instrumentsTaught
+  const instrumentNames = (teacher.instrumentsTaught || [])
     .map((id) => instruments.find((i) => i.id === id)?.name)
     .filter(Boolean)
 
-  const initials = teacher.name
+  const initials = (teacher.name || '??')
     .split(' ')
+    .filter(Boolean)
     .map((n) => n[0])
     .join('')
     .slice(0, 2)
@@ -37,11 +38,10 @@ export function TeacherCard({
       {/* Status indicator */}
       <div className="absolute right-4 top-4">
         <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-            teacher.active
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${teacher.active
               ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
               : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-          }`}
+            }`}
         >
           {teacher.active ? 'Active' : 'Inactive'}
         </span>

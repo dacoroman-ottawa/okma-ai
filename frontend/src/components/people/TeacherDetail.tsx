@@ -45,14 +45,15 @@ export function TeacherDetail({
   onUpdateAvailability,
   onViewStudent,
 }: TeacherDetailProps) {
-  const initials = teacher.name
+  const initials = (teacher.name || '??')
     .split(' ')
+    .filter(Boolean)
     .map((n) => n[0])
     .join('')
     .slice(0, 2)
     .toUpperCase()
 
-  const instrumentNames = teacher.instrumentsTaught
+  const instrumentNames = (teacher.instrumentsTaught || [])
     .map((id) => instruments.find((i) => i.id === id)?.name)
     .filter(Boolean)
 
@@ -68,11 +69,18 @@ export function TeacherDetail({
     }
   }).filter((e) => e.student)
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return 'Not specified'
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return 'Invalid Date'
+
+    // For date-only strings from the backend (YYYY-MM-DD),
+    // new Date() interprets them as UTC. We should display them as UTC to avoid off-by-one errors.
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
+      timeZone: 'UTC'
     })
   }
 
@@ -121,11 +129,10 @@ export function TeacherDetail({
                   {teacher.name}
                 </h1>
                 <span
-                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                    teacher.active
-                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
-                      : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                  }`}
+                  className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${teacher.active
+                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
+                    : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                    }`}
                 >
                   {teacher.active ? 'Active' : 'Inactive'}
                 </span>
@@ -263,15 +270,16 @@ export function TeacherDetail({
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-amber-500 text-sm font-medium text-white">
-                      {student!.name
+                      {(student?.name || '??')
                         .split(' ')
+                        .filter(Boolean)
                         .map((n) => n[0])
                         .join('')
                         .slice(0, 2)}
                     </div>
                     <div>
                       <p className="font-medium text-slate-900 dark:text-slate-100">
-                        {student!.name}
+                        {student?.name || 'Unknown Student'}
                       </p>
                       <p className="text-sm text-slate-500 dark:text-slate-400">
                         Since {formatDate(enrollment.startDate)}

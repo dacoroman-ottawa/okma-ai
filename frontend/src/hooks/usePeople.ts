@@ -3,32 +3,20 @@
 import { useState, useEffect } from "react";
 import type { Teacher, Student, Instrument, Enrollment, AvailabilitySlot } from "@/types/people";
 
-// Mock data based on sample-data.json for initial integration
-const MOCK_DATA = {
-    teachers: [
-        {
-            id: "tch-001",
-            name: "Margaret Chen",
-            address: "45 Maple Grove Drive, Kanata, ON K2K 1X3",
-            email: "margaret.chen@email.com",
-            primaryContact: "613-555-0142",
-            dateOfBirth: "1978-03-15",
-            active: true,
-            biography: "Margaret has been teaching piano for over 20 years...",
-            specialization: "Classical Piano",
-            qualification: "Master",
-            dateOfEnrollment: "2018-09-01",
-            socialInsuranceNumber: "123-456-789",
-            hourlyRate: 65,
-            instrumentsTaught: ["inst-001"]
-        }
-    ],
-    instruments: [{ id: "inst-001", name: "Piano" }],
-    students: [],
-    enrollments: [],
-    teacherAvailability: { "tch-001": [] },
-    studentAvailability: {}
-};
+function toCamel(obj: any): any {
+    if (Array.isArray(obj)) {
+        return obj.map(v => toCamel(v));
+    } else if (obj !== null && obj.constructor === Object) {
+        return Object.keys(obj).reduce(
+            (result, key) => ({
+                ...result,
+                [key.replace(/(_\w)/g, k => k[1].toUpperCase())]: toCamel(obj[key]),
+            }),
+            {},
+        );
+    }
+    return obj;
+}
 
 export function usePeople() {
     const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -43,7 +31,7 @@ export function usePeople() {
         async function fetchData() {
             try {
                 setLoading(true);
-                // 1. Get Admin Token (Mocking login for now)
+                // 1. Get Admin Token
                 const tokenRes = await fetch("http://localhost:8000/token", {
                     method: "POST",
                     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -57,19 +45,30 @@ export function usePeople() {
                 // 2. Fetch Data
                 const headers = { Authorization: `Bearer ${access_token}` };
 
-                const [tchRes, stuRes] = await Promise.all([
+                const [tchRes, stuRes, instRes] = await Promise.all([
                     fetch("http://localhost:8000/people/teachers", { headers }),
-                    fetch("http://localhost:8000/people/students", { headers })
+                    fetch("http://localhost:8000/people/students", { headers }),
+                    fetch("http://localhost:8000/people/instruments", { headers })
                 ]);
 
-                const tchData = await tchRes.json();
-                const stuData = await stuRes.json();
+                const tchData = toCamel(await tchRes.json());
+                const stuData = toCamel(await stuRes.json());
+                const instData = toCamel(await instRes.json());
 
                 setTeachers(tchData);
                 setStudents(stuData);
+                setInstruments(instData);
 
-                // Mocking instruments for now
-                setInstruments([{ id: "inst-001", name: "Piano" }]);
+                // Map availability for students (as they are in the list)
+                const stuAvail: Record<string, AvailabilitySlot[]> = {};
+                stuData.forEach((s: any) => {
+                    if (s.availability) stuAvail[s.id] = s.availability;
+                });
+                setStudentAvailability(stuAvail);
+
+                // For teachers, the list endpoint currently includes instrumentsTaught
+                // We'll need another fetch for full availability if not in list
+
                 setLoading(false);
             } catch (error) {
                 console.error("Fetch error:", error);

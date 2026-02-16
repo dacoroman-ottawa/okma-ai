@@ -40,6 +40,7 @@ export interface Teacher {
   socialInsuranceNumber: string
   hourlyRate: number
   instrumentsTaught: string[]
+  availability?: AvailabilitySlot[]
 }
 
 export interface Student {

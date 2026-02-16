@@ -2,10 +2,11 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from typing import Annotated
+from typing import Annotated, Any
 from .database import init_db, get_db
 from .routes import people
 from .auth import authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from fastapi.exceptions import RequestValidationError
 from datetime import timedelta
 
 app = FastAPI(title="KanataMusicAcademy API")
@@ -16,7 +17,7 @@ init_db()
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -26,8 +27,8 @@ app.include_router(people.router)
 
 @app.post("/token")
 async def login_for_access_token(
-    db: Annotated[Session, Depends(get_db)],
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
+    db: Any = Depends(get_db),
+    form_data: OAuth2PasswordRequestForm = Depends()
 ):
     user = authenticate_user(db, form_data.username, form_data.password)
     if not user:

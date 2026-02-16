@@ -30,7 +30,7 @@ export function StudentsList({
 
       // Instrument filter - check skill levels
       if (selectedInstrument) {
-        const hasInstrument = student.skillLevels.some(
+        const hasInstrument = (student.skillLevels || []).some(
           (skill) => skill.instrumentId === selectedInstrument
         )
         if (!hasInstrument) {

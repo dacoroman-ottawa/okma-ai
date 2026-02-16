@@ -1,19 +1,17 @@
 import json
 import uuid
+from datetime import datetime
 from sqlalchemy.orm import Session
-from .database import SessionLocal, init_db
-from .models import AppUser, Teacher, Student, Instrument, UserRoleEnum, QualificationEnum, SkillLevelEnum, SkillLevel, AvailabilitySlot, Enrollment
-from .auth import get_password_hash
+from .database import SessionLocal, init_db, engine
+from .models import Base, AppUser, Teacher, Student, Instrument, UserRoleEnum, QualificationEnum, SkillLevelEnum, SkillLevel, AvailabilitySlot, Enrollment
 
 def seed_data():
-    db = SessionLocal()
+    # Drop all and recreate for a clean seed
+    Base.metadata.drop_all(bind=engine)
     init_db()
     
-    # Check if data already exists
-    if db.query(Instrument).first():
-        print("Data already seeded.")
-        return
-
+    db = SessionLocal()
+    
     # 1. Load sample data
     with open("product-plan/sections/people/sample-data.json", "r") as f:
         data = json.load(f)
@@ -63,7 +61,8 @@ def seed_data():
             biography=tch["biography"],
             specialization=tch["specialization"],
             qualification=QualificationEnum(tch["qualification"]),
-            date_of_enrollment=None, # Parse date if needed
+            date_of_enrollment=datetime.strptime(tch["dateOfEnrollment"], "%Y-%m-%d").date() if tch.get("dateOfEnrollment") else None,
+            date_of_birth=datetime.strptime(tch["dateOfBirth"], "%Y-%m-%d").date() if tch.get("dateOfBirth") else None,
             social_insurance_number=tch["socialInsuranceNumber"],
             hourly_rate=tch["hourlyRate"],
             active=tch["active"]
@@ -96,6 +95,7 @@ def seed_data():
             email=stu["email"],
             primary_contact=stu["primaryContact"],
             address=stu["address"],
+            date_of_birth=datetime.strptime(stu["dateOfBirth"], "%Y-%m-%d").date() if stu.get("dateOfBirth") else None,
             active=stu["active"]
         )
         db.add(new_stu)
@@ -115,7 +115,8 @@ def seed_data():
             id=enr["id"],
             student_id=enr["studentId"],
             teacher_id=enr["teacherId"],
-            instrument_id=enr["instrumentId"]
+            instrument_id=enr["instrumentId"],
+            start_date=datetime.strptime(enr["startDate"], "%Y-%m-%d").date() if enr.get("startDate") else None
         )
         db.add(new_enr)
 
@@ -130,8 +131,23 @@ def seed_data():
             )
             db.add(new_slot)
 
+    for stu_id, slots in data["studentAvailability"].items():
+        for slot in slots:
+            new_slot = AvailabilitySlot(
+                student_id=stu_id,
+                day=slot["day"],
+                start_time=slot["startTime"],
+                end_time=slot["endTime"]
+            )
+            db.add(new_slot)
+
     db.commit()
     print("Database seeded successfully!")
+
+def get_password_hash(password):
+    # Importing here to avoid dependency issue during seed if bcrypt not fully ready
+    from .auth import get_password_hash as hash_fn
+    return hash_fn(password)
 
 if __name__ == "__main__":
     seed_data()

@@ -1,6 +1,6 @@
 import bcrypt
 from datetime import datetime, timedelta
-from typing import Optional, List
+from typing import Optional, List, Any
 from jose import JWTError, jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -20,7 +20,7 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
-def authenticate_user(db: Session, email: str, password: str):
+def authenticate_user(db: Any, email: str, password: str):
     user = db.query(AppUser).filter(AppUser.email == email).first()
     if not user:
         return False
@@ -38,28 +38,38 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends()):
-    # Note:db dependency should be provided by a database session getter
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+async def get_current_user(token = Depends(oauth2_scheme)):
+    from .database import get_db
+    # We use next() because get_db is a generator
+    db_gen = get_db()
+    db = next(db_gen)
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
+        credentials_exception = HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            email: str = payload.get("sub")
+            if email is None:
+                raise credentials_exception
+        except JWTError:
             raise credentials_exception
-    except JWTError:
-        raise credentials_exception
-        
-    user = db.query(AppUser).filter(AppUser.email == email).first()
-    if user is None:
-        raise credentials_exception
-    return user
+            
+        user = db.query(AppUser).filter(AppUser.email == email).first()
+        if user is None:
+            raise credentials_exception
+        return user
+    finally:
+        # Close the generator correctly
+        try:
+            next(db_gen)
+        except StopIteration:
+            pass
 
 def RoleChecker(allowed_roles: List[UserRoleEnum]):
-    async def checker(current_user: AppUser = Depends(get_current_user)):
+    async def checker(current_user = Depends(get_current_user)):
         if current_user.is_admin:
             return current_user
         if current_user.role not in allowed_roles:

@@ -22,20 +22,23 @@ export function StudentCard({
   onView,
   onEdit,
 }: StudentCardProps) {
-  const initials = student.name
+  const initials = (student.name || '??')
     .split(' ')
+    .filter(Boolean)
     .map((n) => n[0])
     .join('')
     .slice(0, 2)
     .toUpperCase()
 
-  const availableDays = [...new Set(availability.map((slot) => slot.day))]
+  const availabilityData = availability || []
+  const availableDays = [...new Set(availabilityData.map((slot) => slot.day))]
 
-  const age = student.dateOfBirth
+  const dob = student.dateOfBirth
+  const age = dob
     ? Math.floor(
-        (Date.now() - new Date(student.dateOfBirth).getTime()) /
-          (365.25 * 24 * 60 * 60 * 1000)
-      )
+      (Date.now() - new Date(dob).getTime()) /
+      (365.25 * 24 * 60 * 60 * 1000)
+    )
     : null
 
   return (
@@ -46,11 +49,10 @@ export function StudentCard({
       {/* Status indicator */}
       <div className="absolute right-4 top-4">
         <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-            student.active
+          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${student.active
               ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-400'
               : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-          }`}
+            }`}
         >
           {student.active ? 'Active' : 'Inactive'}
         </span>
@@ -71,11 +73,10 @@ export function StudentCard({
         </div>
       </div>
 
-      {/* Skill levels */}
       <div className="mb-4">
-        {student.skillLevels.length > 0 ? (
+        {(student.skillLevels || []).length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
-            {student.skillLevels.map((skill) => {
+            {(student.skillLevels || []).map((skill) => {
               const instrumentName = instruments.find(
                 (i) => i.id === skill.instrumentId
               )?.name
