@@ -9,6 +9,23 @@ class StatusEnum(enum.Enum):
     ACTIVE = "active"
     INACTIVE = "inactive"
 
+class UserRoleEnum(enum.Enum):
+    ADMIN = "admin"
+    TEACHER = "teacher"
+    STUDENT = "student"
+
+class QualificationEnum(enum.Enum):
+    BACHELOR = "Bachelor of Music"
+    MASTER = "Master"
+    DOCTORATE = "Doctorate"
+    CERTIFICATE = "Professional Certificate"
+    SELF_TAUGHT = "Self-Taught Professional"
+
+class SkillLevelEnum(enum.Enum):
+    BEGINNER = "Beginner"
+    INTERMEDIATE = "Intermediate"
+    ADVANCED = "Advanced"
+
 class ClassTypeEnum(enum.Enum):
     PRIVATE = "private"
     GROUP = "group"
@@ -58,36 +75,47 @@ teacher_instruments = Table(
 class Teacher(Base):
     __tablename__ = "teachers"
     id = Column(String, primary_key=True)
+    user_id = Column(String, ForeignKey("app_users.id"), unique=True)
     name = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
-    phone = Column(String)
+    primary_contact = Column(String)
     address = Column(String)
+    date_of_birth = Column(Date)
     biography = Column(String)
-    qualifications = Column(String)
+    specialization = Column(String)
+    qualification = Column(Enum(QualificationEnum))
+    date_of_enrollment = Column(Date)
+    social_insurance_number = Column(String)
     hourly_rate = Column(Float)
-    status = Column(Enum(StatusEnum), default=StatusEnum.ACTIVE)
+    active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    user = relationship("AppUser", back_populates="teacher")
     instruments = relationship("Instrument", secondary=teacher_instruments, back_populates="teachers")
     enrollments = relationship("Enrollment", back_populates="teacher")
     classes = relationship("Class", back_populates="teacher")
+    availability = relationship("AvailabilitySlot", back_populates="teacher")
 
 class Student(Base):
     __tablename__ = "students"
     id = Column(String, primary_key=True)
+    user_id = Column(String, ForeignKey("app_users.id"), unique=True)
     name = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
-    phone = Column(String)
+    primary_contact = Column(String)
     address = Column(String)
     date_of_birth = Column(Date)
-    status = Column(Enum(StatusEnum), default=StatusEnum.ACTIVE)
+    active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    user = relationship("AppUser", back_populates="student")
+    skill_levels = relationship("SkillLevel", back_populates="student")
     enrollments = relationship("Enrollment", back_populates="student")
     classes = relationship("Class", secondary=class_students, back_populates="students")
     rentals = relationship("Rental", back_populates="customer")
     sales = relationship("Sale", back_populates="customer")
     transactions = relationship("CreditTransaction", back_populates="student")
+    availability = relationship("AvailabilitySlot", back_populates="student")
 
 class Instrument(Base):
     __tablename__ = "instruments"
@@ -205,7 +233,35 @@ class AppUser(Base):
     id = Column(String, primary_key=True)
     name = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    role = Column(Enum(UserRoleEnum), default=UserRoleEnum.STUDENT)
     is_admin = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
+    is_verified = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     last_login_at = Column(DateTime(timezone=True))
+
+    teacher = relationship("Teacher", back_populates="user", uselist=False)
+    student = relationship("Student", back_populates="user", uselist=False)
+
+class AvailabilitySlot(Base):
+    __tablename__ = "availability_slots"
+    id = Column(Integer, primary_key=True)
+    teacher_id = Column(String, ForeignKey("teachers.id"), nullable=True)
+    student_id = Column(String, ForeignKey("students.id"), nullable=True)
+    day = Column(String, nullable=False) # e.g., "Monday"
+    start_time = Column(String, nullable=False) # e.g., "09:00"
+    end_time = Column(String, nullable=False) # e.g., "17:00"
+
+    teacher = relationship("Teacher", back_populates="availability")
+    student = relationship("Student", back_populates="availability")
+
+class SkillLevel(Base):
+    __tablename__ = "skill_levels"
+    id = Column(Integer, primary_key=True)
+    student_id = Column(String, ForeignKey("students.id"))
+    instrument_id = Column(String, ForeignKey("instruments.id"))
+    level = Column(Enum(SkillLevelEnum))
+
+    student = relationship("Student", back_populates="skill_levels")
+    instrument = relationship("Instrument")
