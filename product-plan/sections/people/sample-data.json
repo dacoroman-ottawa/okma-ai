@@ -1,0 +1,338 @@
+{
+  "_meta": {
+    "models": {
+      "teachers": "Instructors who teach music lessons at the academy. Each teacher has qualifications, specialization, hourly rate, and a list of instruments they can teach.",
+      "students": "Learners enrolled at the academy. Each student has skill levels for the instruments they're learning and can study with multiple teachers.",
+      "instruments": "Musical instruments available to learn at the academy.",
+      "enrollments": "Links between students, teachers, and instruments representing ongoing study relationships.",
+      "availabilitySlots": "Weekly recurring time slots when a person is available for lessons."
+    },
+    "relationships": [
+      "Each Teacher can teach one or more Instruments",
+      "Each Student has Skill Levels for the Instruments they're learning",
+      "Each Enrollment links one Student to one Teacher for one Instrument",
+      "Both Teachers and Students have Availability Slots defining when they can attend lessons"
+    ]
+  },
+  "instruments": [
+    { "id": "inst-001", "name": "Piano" },
+    { "id": "inst-002", "name": "Guitar" },
+    { "id": "inst-003", "name": "Violin" },
+    { "id": "inst-004", "name": "Drums" },
+    { "id": "inst-005", "name": "Voice" },
+    { "id": "inst-006", "name": "Flute" },
+    { "id": "inst-007", "name": "Cello" },
+    { "id": "inst-008", "name": "Saxophone" },
+    { "id": "inst-009", "name": "Clarinet" },
+    { "id": "inst-010", "name": "Trumpet" }
+  ],
+  "teachers": [
+    {
+      "id": "tch-001",
+      "name": "Margaret Chen",
+      "address": "45 Maple Grove Drive, Kanata, ON K2K 1X3",
+      "email": "margaret.chen@email.com",
+      "primaryContact": "613-555-0142",
+      "dateOfBirth": "1978-03-15",
+      "active": true,
+      "biography": "Margaret has been teaching piano for over 20 years and specializes in classical and jazz styles. She has performed with the Ottawa Symphony Orchestra and loves helping students discover their musical voice.",
+      "specialization": "Classical Piano",
+      "qualification": "Master",
+      "dateOfEnrollment": "2018-09-01",
+      "socialInsuranceNumber": "123-456-789",
+      "hourlyRate": 65,
+      "instrumentsTaught": ["inst-001"]
+    },
+    {
+      "id": "tch-002",
+      "name": "David Thompson",
+      "address": "892 Eagleson Road, Kanata, ON K2M 2C5",
+      "email": "david.thompson@email.com",
+      "primaryContact": "613-555-0198",
+      "dateOfBirth": "1985-07-22",
+      "active": true,
+      "biography": "David is a versatile string instructor with experience in both classical and contemporary styles. He performs regularly with local folk and bluegrass bands.",
+      "specialization": "Acoustic Guitar & Strings",
+      "qualification": "Bachelor of Music",
+      "dateOfEnrollment": "2020-01-15",
+      "socialInsuranceNumber": "234-567-890",
+      "hourlyRate": 55,
+      "instrumentsTaught": ["inst-002", "inst-003", "inst-007"]
+    },
+    {
+      "id": "tch-003",
+      "name": "Aisha Patel",
+      "address": "156 Terry Fox Drive, Kanata, ON K2K 3L1",
+      "email": "aisha.patel@email.com",
+      "primaryContact": "613-555-0167",
+      "dateOfBirth": null,
+      "active": true,
+      "biography": null,
+      "specialization": "Vocal Performance",
+      "qualification": "Doctorate",
+      "dateOfEnrollment": "2019-05-10",
+      "socialInsuranceNumber": "345-678-901",
+      "hourlyRate": 75,
+      "instrumentsTaught": ["inst-005"]
+    },
+    {
+      "id": "tch-004",
+      "name": "Michael O'Brien",
+      "address": "2301 Campeau Drive, Kanata, ON K2K 2W3",
+      "email": "michael.obrien@email.com",
+      "primaryContact": "613-555-0134",
+      "dateOfBirth": "1990-11-08",
+      "active": true,
+      "biography": "Mike brings high energy to every lesson. With 10 years of touring experience, he teaches rock, jazz, and Latin percussion styles.",
+      "specialization": "Percussion & Rhythm",
+      "qualification": "Professional Certificate",
+      "dateOfEnrollment": "2021-08-20",
+      "socialInsuranceNumber": "456-789-012",
+      "hourlyRate": 50,
+      "instrumentsTaught": ["inst-004"]
+    },
+    {
+      "id": "tch-005",
+      "name": "Sophie Tremblay",
+      "address": "78 Hearst Way, Kanata, ON K2L 4A2",
+      "email": "sophie.tremblay@email.com",
+      "primaryContact": "613-555-0156",
+      "dateOfBirth": "1982-04-30",
+      "active": false,
+      "biography": "Sophie specializes in woodwind instruments and has taught at several conservatories across Quebec and Ontario before joining the academy.",
+      "specialization": "Woodwinds",
+      "qualification": "Master",
+      "dateOfEnrollment": "2017-03-01",
+      "socialInsuranceNumber": "567-890-123",
+      "hourlyRate": 60,
+      "instrumentsTaught": ["inst-006", "inst-008", "inst-009"]
+    }
+  ],
+  "students": [
+    {
+      "id": "stu-001",
+      "name": "Emma Wilson",
+      "address": "34 Katimavik Road, Kanata, ON K2K 2C7",
+      "email": "emma.wilson@email.com",
+      "primaryContact": "613-555-0211",
+      "dateOfBirth": "2010-06-12",
+      "active": true,
+      "skillLevels": [
+        { "instrumentId": "inst-001", "level": "Intermediate" }
+      ]
+    },
+    {
+      "id": "stu-002",
+      "name": "Lucas Martin",
+      "address": "567 Castlefrank Road, Kanata, ON K2L 1K5",
+      "email": "lucas.martin@email.com",
+      "primaryContact": "613-555-0223",
+      "dateOfBirth": "2008-02-28",
+      "active": true,
+      "skillLevels": [
+        { "instrumentId": "inst-002", "level": "Advanced" },
+        { "instrumentId": "inst-005", "level": "Beginner" }
+      ]
+    },
+    {
+      "id": "stu-003",
+      "name": "Olivia Nguyen",
+      "address": "890 Teron Road, Kanata, ON K2K 1S5",
+      "email": "olivia.nguyen@email.com",
+      "primaryContact": "613-555-0245",
+      "dateOfBirth": "2012-09-05",
+      "active": true,
+      "skillLevels": [
+        { "instrumentId": "inst-003", "level": "Beginner" }
+      ]
+    },
+    {
+      "id": "stu-004",
+      "name": "James Anderson",
+      "address": "123 Goldridge Drive, Kanata, ON K2M 2B8",
+      "email": "james.anderson@email.com",
+      "primaryContact": "613-555-0267",
+      "dateOfBirth": "1995-12-18",
+      "active": true,
+      "skillLevels": [
+        { "instrumentId": "inst-004", "level": "Intermediate" },
+        { "instrumentId": "inst-002", "level": "Beginner" }
+      ]
+    },
+    {
+      "id": "stu-005",
+      "name": "Sophia Kim",
+      "address": "456 Beaverbrook Road, Kanata, ON K2K 1L2",
+      "email": "sophia.kim@email.com",
+      "primaryContact": "613-555-0289",
+      "dateOfBirth": "2007-04-22",
+      "active": true,
+      "skillLevels": [
+        { "instrumentId": "inst-001", "level": "Advanced" },
+        { "instrumentId": "inst-007", "level": "Intermediate" }
+      ]
+    },
+    {
+      "id": "stu-006",
+      "name": "Ethan Brown",
+      "address": "789 Morgan's Grant Way, Kanata, ON K2M 0A3",
+      "email": "ethan.brown@email.com",
+      "primaryContact": "613-555-0301",
+      "dateOfBirth": "2014-08-10",
+      "active": true,
+      "skillLevels": [
+        { "instrumentId": "inst-001", "level": "Beginner" }
+      ]
+    },
+    {
+      "id": "stu-007",
+      "name": "Mia Garcia",
+      "address": "234 Abbeyhill Drive, Kanata, ON K2L 3G5",
+      "email": "mia.garcia@email.com",
+      "primaryContact": "613-555-0323",
+      "dateOfBirth": null,
+      "active": false,
+      "skillLevels": [
+        { "instrumentId": "inst-005", "level": "Intermediate" }
+      ]
+    },
+    {
+      "id": "stu-008",
+      "name": "Noah Taylor",
+      "address": "101 Shirley's Brook Drive, Kanata, ON K2K 2W1",
+      "email": "noah.taylor@email.com",
+      "primaryContact": "613-555-0345",
+      "dateOfBirth": "2009-01-03",
+      "active": true,
+      "skillLevels": []
+    }
+  ],
+  "enrollments": [
+    {
+      "id": "enr-001",
+      "studentId": "stu-001",
+      "teacherId": "tch-001",
+      "instrumentId": "inst-001",
+      "startDate": "2023-09-05"
+    },
+    {
+      "id": "enr-002",
+      "studentId": "stu-002",
+      "teacherId": "tch-002",
+      "instrumentId": "inst-002",
+      "startDate": "2022-01-10"
+    },
+    {
+      "id": "enr-003",
+      "studentId": "stu-002",
+      "teacherId": "tch-003",
+      "instrumentId": "inst-005",
+      "startDate": "2024-03-15"
+    },
+    {
+      "id": "enr-004",
+      "studentId": "stu-003",
+      "teacherId": "tch-002",
+      "instrumentId": "inst-003",
+      "startDate": "2024-01-08"
+    },
+    {
+      "id": "enr-005",
+      "studentId": "stu-004",
+      "teacherId": "tch-004",
+      "instrumentId": "inst-004",
+      "startDate": "2023-06-12"
+    },
+    {
+      "id": "enr-006",
+      "studentId": "stu-004",
+      "teacherId": "tch-002",
+      "instrumentId": "inst-002",
+      "startDate": "2024-09-01"
+    },
+    {
+      "id": "enr-007",
+      "studentId": "stu-005",
+      "teacherId": "tch-001",
+      "instrumentId": "inst-001",
+      "startDate": "2021-09-07"
+    },
+    {
+      "id": "enr-008",
+      "studentId": "stu-005",
+      "teacherId": "tch-002",
+      "instrumentId": "inst-007",
+      "startDate": "2023-01-16"
+    },
+    {
+      "id": "enr-009",
+      "studentId": "stu-006",
+      "teacherId": "tch-001",
+      "instrumentId": "inst-001",
+      "startDate": "2024-09-09"
+    },
+    {
+      "id": "enr-010",
+      "studentId": "stu-007",
+      "teacherId": "tch-003",
+      "instrumentId": "inst-005",
+      "startDate": "2022-05-02"
+    }
+  ],
+  "teacherAvailability": {
+    "tch-001": [
+      { "day": "Monday", "startTime": "09:00", "endTime": "12:00" },
+      { "day": "Monday", "startTime": "14:00", "endTime": "18:00" },
+      { "day": "Wednesday", "startTime": "09:00", "endTime": "17:00" },
+      { "day": "Friday", "startTime": "10:00", "endTime": "15:00" }
+    ],
+    "tch-002": [
+      { "day": "Tuesday", "startTime": "10:00", "endTime": "19:00" },
+      { "day": "Thursday", "startTime": "10:00", "endTime": "19:00" },
+      { "day": "Saturday", "startTime": "09:00", "endTime": "14:00" }
+    ],
+    "tch-003": [
+      { "day": "Monday", "startTime": "13:00", "endTime": "20:00" },
+      { "day": "Wednesday", "startTime": "13:00", "endTime": "20:00" },
+      { "day": "Friday", "startTime": "13:00", "endTime": "20:00" }
+    ],
+    "tch-004": [
+      { "day": "Tuesday", "startTime": "15:00", "endTime": "21:00" },
+      { "day": "Thursday", "startTime": "15:00", "endTime": "21:00" },
+      { "day": "Saturday", "startTime": "10:00", "endTime": "18:00" }
+    ],
+    "tch-005": []
+  },
+  "studentAvailability": {
+    "stu-001": [
+      { "day": "Monday", "startTime": "16:00", "endTime": "18:00" },
+      { "day": "Wednesday", "startTime": "16:00", "endTime": "18:00" }
+    ],
+    "stu-002": [
+      { "day": "Tuesday", "startTime": "17:00", "endTime": "20:00" },
+      { "day": "Thursday", "startTime": "17:00", "endTime": "20:00" },
+      { "day": "Saturday", "startTime": "09:00", "endTime": "14:00" }
+    ],
+    "stu-003": [
+      { "day": "Tuesday", "startTime": "15:00", "endTime": "17:00" },
+      { "day": "Thursday", "startTime": "15:00", "endTime": "17:00" }
+    ],
+    "stu-004": [
+      { "day": "Tuesday", "startTime": "18:00", "endTime": "21:00" },
+      { "day": "Saturday", "startTime": "10:00", "endTime": "16:00" }
+    ],
+    "stu-005": [
+      { "day": "Monday", "startTime": "09:00", "endTime": "11:00" },
+      { "day": "Wednesday", "startTime": "09:00", "endTime": "11:00" },
+      { "day": "Friday", "startTime": "14:00", "endTime": "16:00" }
+    ],
+    "stu-006": [
+      { "day": "Wednesday", "startTime": "15:00", "endTime": "17:00" }
+    ],
+    "stu-007": [],
+    "stu-008": [
+      { "day": "Monday", "startTime": "16:00", "endTime": "19:00" },
+      { "day": "Friday", "startTime": "16:00", "endTime": "19:00" }
+    ]
+  }
+}

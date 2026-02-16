@@ -1,0 +1,463 @@
+{
+  "_meta": {
+    "models": {
+      "products": "Items in the catalog that can be rented or sold. Includes instruments, books, accessories, musical scores, and gift cards.",
+      "suppliers": "Vendors who provide products to the music school. Each supplier has contact information.",
+      "customers": "People who rent or purchase products. May or may not be enrolled students.",
+      "rentals": "Records of products being rented to customers, with rental period, due date, deposit, and return status.",
+      "sales": "Records of products sold to customers, with date and payment information."
+    },
+    "relationships": [
+      "Each Product belongs to one Supplier",
+      "Each Rental links one Product to one Customer",
+      "Each Sale links one Product to one Customer",
+      "Products track stock quantity and re-order levels"
+    ]
+  },
+  "suppliers": [
+    {
+      "id": "sup-001",
+      "name": "Melody Music Distributors",
+      "contactPerson": "James Chen",
+      "email": "orders@melodymusic.ca",
+      "phone": "613-555-0101",
+      "address": "450 Industrial Ave, Ottawa, ON K1G 3Z4",
+      "active": true
+    },
+    {
+      "id": "sup-002",
+      "name": "StringWorks Canada",
+      "contactPerson": "Maria Santos",
+      "email": "sales@stringworks.ca",
+      "phone": "416-555-0202",
+      "address": "88 King St W, Toronto, ON M5H 1A1",
+      "active": true
+    },
+    {
+      "id": "sup-003",
+      "name": "Percussion Plus",
+      "contactPerson": "Derek Thompson",
+      "email": "info@percussionplus.com",
+      "phone": "514-555-0303",
+      "address": "123 Rue Drummond, Montreal, QC H3B 1C6",
+      "active": true
+    },
+    {
+      "id": "sup-004",
+      "name": "Sheet Music Direct",
+      "contactPerson": "Emily Watson",
+      "email": "orders@sheetmusicdirect.ca",
+      "phone": "604-555-0404",
+      "address": "200 Burrard St, Vancouver, BC V6C 3L6",
+      "active": false
+    }
+  ],
+  "customers": [
+    {
+      "id": "cust-001",
+      "name": "Michael Roberts",
+      "email": "michael.roberts@email.com",
+      "phone": "613-555-1001",
+      "address": "78 Maple Drive, Kanata, ON K2K 1X3",
+      "notes": "Parent of student Emma Roberts"
+    },
+    {
+      "id": "cust-002",
+      "name": "Sarah Kim",
+      "email": "sarah.kim@email.com",
+      "phone": "613-555-1002",
+      "address": "234 Oak Street, Ottawa, ON K1S 2C5",
+      "notes": null
+    },
+    {
+      "id": "cust-003",
+      "name": "David Nguyen",
+      "email": "david.nguyen@email.com",
+      "phone": "613-555-1003",
+      "address": "56 Pine Lane, Nepean, ON K2G 4R7",
+      "notes": "Prefers email communication"
+    },
+    {
+      "id": "cust-004",
+      "name": "Jennifer Walsh",
+      "email": "jen.walsh@email.com",
+      "phone": "613-555-1004",
+      "address": "890 Birch Road, Kanata, ON K2L 3P8",
+      "notes": "Parent of students Liam and Olivia Walsh"
+    },
+    {
+      "id": "cust-005",
+      "name": "Robert Martinez",
+      "email": "r.martinez@email.com",
+      "phone": "613-555-1005",
+      "address": "12 Cedar Court, Stittsville, ON K2S 1B4",
+      "notes": null
+    },
+    {
+      "id": "cust-006",
+      "name": "Amanda Taylor",
+      "email": "amanda.taylor@email.com",
+      "phone": "613-555-1006",
+      "address": "445 Willow Way, Ottawa, ON K1V 7R9",
+      "notes": "Adult student"
+    }
+  ],
+  "products": [
+    {
+      "id": "prod-001",
+      "type": "instrument",
+      "name": "Student Violin",
+      "model": "Stentor Student I",
+      "serialNumber": null,
+      "supplierId": "sup-002",
+      "cost": 180.00,
+      "sellingPrice": 299.00,
+      "rentalPrice": 45.00,
+      "stockQuantity": 8,
+      "reorderLevel": 3,
+      "active": true
+    },
+    {
+      "id": "prod-002",
+      "type": "instrument",
+      "name": "Acoustic Guitar",
+      "model": "Yamaha F310",
+      "serialNumber": null,
+      "supplierId": "sup-001",
+      "cost": 150.00,
+      "sellingPrice": 249.00,
+      "rentalPrice": 35.00,
+      "stockQuantity": 5,
+      "reorderLevel": 2,
+      "active": true
+    },
+    {
+      "id": "prod-003",
+      "type": "instrument",
+      "name": "Digital Piano",
+      "model": "Casio CDP-S100",
+      "serialNumber": "CDP-2024-0892",
+      "supplierId": "sup-001",
+      "cost": 450.00,
+      "sellingPrice": 649.00,
+      "rentalPrice": 75.00,
+      "stockQuantity": 2,
+      "reorderLevel": 2,
+      "active": true
+    },
+    {
+      "id": "prod-004",
+      "type": "accessory",
+      "name": "Drumsticks - Vic Firth 5A",
+      "model": null,
+      "serialNumber": null,
+      "supplierId": "sup-003",
+      "cost": 8.00,
+      "sellingPrice": 14.95,
+      "rentalPrice": null,
+      "stockQuantity": 24,
+      "reorderLevel": 10,
+      "active": true
+    },
+    {
+      "id": "prod-005",
+      "type": "accessory",
+      "name": "Guitar Capo",
+      "model": "Kyser Quick-Change",
+      "serialNumber": null,
+      "supplierId": "sup-001",
+      "cost": 12.00,
+      "sellingPrice": 24.99,
+      "rentalPrice": null,
+      "stockQuantity": 6,
+      "reorderLevel": 5,
+      "active": true
+    },
+    {
+      "id": "prod-006",
+      "type": "book",
+      "name": "Piano Adventures Primer Level",
+      "model": null,
+      "serialNumber": null,
+      "supplierId": "sup-004",
+      "cost": 8.50,
+      "sellingPrice": 14.99,
+      "rentalPrice": null,
+      "stockQuantity": 12,
+      "reorderLevel": 5,
+      "active": true
+    },
+    {
+      "id": "prod-007",
+      "type": "book",
+      "name": "Hal Leonard Guitar Method Book 1",
+      "model": null,
+      "serialNumber": null,
+      "supplierId": "sup-004",
+      "cost": 7.00,
+      "sellingPrice": 12.99,
+      "rentalPrice": null,
+      "stockQuantity": 3,
+      "reorderLevel": 5,
+      "active": true
+    },
+    {
+      "id": "prod-008",
+      "type": "musical_score",
+      "name": "Beethoven Sonatas Vol. 1",
+      "model": null,
+      "serialNumber": null,
+      "supplierId": "sup-004",
+      "cost": 18.00,
+      "sellingPrice": 34.99,
+      "rentalPrice": null,
+      "stockQuantity": 4,
+      "reorderLevel": 2,
+      "active": true
+    },
+    {
+      "id": "prod-009",
+      "type": "accessory",
+      "name": "Practice Pad",
+      "model": "Remo RT-0010",
+      "serialNumber": null,
+      "supplierId": "sup-003",
+      "cost": 25.00,
+      "sellingPrice": 45.00,
+      "rentalPrice": null,
+      "stockQuantity": 1,
+      "reorderLevel": 3,
+      "active": true
+    },
+    {
+      "id": "prod-010",
+      "type": "gift_card",
+      "name": "Gift Card - $50",
+      "model": null,
+      "serialNumber": null,
+      "supplierId": null,
+      "cost": 0,
+      "sellingPrice": 50.00,
+      "rentalPrice": null,
+      "stockQuantity": 20,
+      "reorderLevel": 5,
+      "active": true
+    }
+  ],
+  "rentals": [
+    {
+      "id": "rent-001",
+      "productId": "prod-001",
+      "customerId": "cust-001",
+      "rentalPeriod": "monthly",
+      "startDate": "2025-01-05",
+      "dueDate": "2025-02-05",
+      "returnDate": null,
+      "deposit": 100.00,
+      "rentalFee": 45.00,
+      "lateFee": 0,
+      "status": "active",
+      "conditionNotes": null
+    },
+    {
+      "id": "rent-002",
+      "productId": "prod-002",
+      "customerId": "cust-002",
+      "rentalPeriod": "monthly",
+      "startDate": "2024-12-15",
+      "dueDate": "2025-01-15",
+      "returnDate": null,
+      "deposit": 75.00,
+      "rentalFee": 35.00,
+      "lateFee": 17.50,
+      "status": "overdue",
+      "conditionNotes": null
+    },
+    {
+      "id": "rent-003",
+      "productId": "prod-001",
+      "customerId": "cust-004",
+      "rentalPeriod": "monthly",
+      "startDate": "2024-11-01",
+      "dueDate": "2024-12-01",
+      "returnDate": "2024-12-02",
+      "deposit": 100.00,
+      "rentalFee": 45.00,
+      "lateFee": 0,
+      "status": "returned",
+      "conditionNotes": "Good condition, minor rosin residue on strings"
+    },
+    {
+      "id": "rent-004",
+      "productId": "prod-003",
+      "customerId": "cust-003",
+      "rentalPeriod": "monthly",
+      "startDate": "2025-01-10",
+      "dueDate": "2025-02-10",
+      "returnDate": null,
+      "deposit": 200.00,
+      "rentalFee": 75.00,
+      "lateFee": 0,
+      "status": "active",
+      "conditionNotes": null
+    },
+    {
+      "id": "rent-005",
+      "productId": "prod-002",
+      "customerId": "cust-005",
+      "rentalPeriod": "weekly",
+      "startDate": "2025-01-20",
+      "dueDate": "2025-01-27",
+      "returnDate": null,
+      "deposit": 50.00,
+      "rentalFee": 15.00,
+      "lateFee": 0,
+      "status": "active",
+      "conditionNotes": null
+    },
+    {
+      "id": "rent-006",
+      "productId": "prod-001",
+      "customerId": "cust-006",
+      "rentalPeriod": "monthly",
+      "startDate": "2024-10-01",
+      "dueDate": "2024-11-01",
+      "returnDate": "2024-10-28",
+      "deposit": 100.00,
+      "rentalFee": 45.00,
+      "lateFee": 0,
+      "status": "returned",
+      "conditionNotes": "Excellent condition"
+    },
+    {
+      "id": "rent-007",
+      "productId": "prod-003",
+      "customerId": "cust-001",
+      "rentalPeriod": "monthly",
+      "startDate": "2024-09-15",
+      "dueDate": "2024-10-15",
+      "returnDate": "2024-10-20",
+      "deposit": 200.00,
+      "rentalFee": 75.00,
+      "lateFee": 18.75,
+      "status": "returned",
+      "conditionNotes": "Good condition, returned 5 days late"
+    },
+    {
+      "id": "rent-008",
+      "productId": "prod-001",
+      "customerId": "cust-003",
+      "rentalPeriod": "monthly",
+      "startDate": "2025-01-25",
+      "dueDate": "2025-02-25",
+      "returnDate": null,
+      "deposit": 100.00,
+      "rentalFee": 45.00,
+      "lateFee": 0,
+      "status": "active",
+      "conditionNotes": null
+    }
+  ],
+  "sales": [
+    {
+      "id": "sale-001",
+      "productId": "prod-006",
+      "customerId": "cust-001",
+      "date": "2025-01-12",
+      "quantity": 1,
+      "unitPrice": 14.99,
+      "totalAmount": 14.99,
+      "paymentMethod": "Credit Card"
+    },
+    {
+      "id": "sale-002",
+      "productId": "prod-004",
+      "customerId": "cust-003",
+      "date": "2025-01-15",
+      "quantity": 2,
+      "unitPrice": 14.95,
+      "totalAmount": 29.90,
+      "paymentMethod": "Debit"
+    },
+    {
+      "id": "sale-003",
+      "productId": "prod-009",
+      "customerId": "cust-003",
+      "date": "2025-01-15",
+      "quantity": 1,
+      "unitPrice": 45.00,
+      "totalAmount": 45.00,
+      "paymentMethod": "Debit"
+    },
+    {
+      "id": "sale-004",
+      "productId": "prod-005",
+      "customerId": "cust-002",
+      "date": "2025-01-18",
+      "quantity": 1,
+      "unitPrice": 24.99,
+      "totalAmount": 24.99,
+      "paymentMethod": "Cash"
+    },
+    {
+      "id": "sale-005",
+      "productId": "prod-007",
+      "customerId": "cust-004",
+      "date": "2025-01-20",
+      "quantity": 2,
+      "unitPrice": 12.99,
+      "totalAmount": 25.98,
+      "paymentMethod": "Credit Card"
+    },
+    {
+      "id": "sale-006",
+      "productId": "prod-010",
+      "customerId": "cust-005",
+      "date": "2025-01-22",
+      "quantity": 1,
+      "unitPrice": 50.00,
+      "totalAmount": 50.00,
+      "paymentMethod": "Cash"
+    },
+    {
+      "id": "sale-007",
+      "productId": "prod-008",
+      "customerId": "cust-006",
+      "date": "2025-01-24",
+      "quantity": 1,
+      "unitPrice": 34.99,
+      "totalAmount": 34.99,
+      "paymentMethod": "E-Transfer"
+    },
+    {
+      "id": "sale-008",
+      "productId": "prod-004",
+      "customerId": "cust-001",
+      "date": "2025-01-25",
+      "quantity": 1,
+      "unitPrice": 14.95,
+      "totalAmount": 14.95,
+      "paymentMethod": "Credit Card"
+    },
+    {
+      "id": "sale-009",
+      "productId": "prod-006",
+      "customerId": "cust-004",
+      "date": "2025-01-26",
+      "quantity": 1,
+      "unitPrice": 14.99,
+      "totalAmount": 14.99,
+      "paymentMethod": "Debit"
+    },
+    {
+      "id": "sale-010",
+      "productId": "prod-002",
+      "customerId": "cust-006",
+      "date": "2025-01-28",
+      "quantity": 1,
+      "unitPrice": 249.00,
+      "totalAmount": 249.00,
+      "paymentMethod": "Credit Card"
+    }
+  ]
+}

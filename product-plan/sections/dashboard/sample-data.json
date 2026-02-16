@@ -1,0 +1,191 @@
+{
+  "_meta": {
+    "models": {
+      "metrics": "Summary counts displayed at the top of the dashboard showing key activity numbers.",
+      "todaysClasses": "Classes scheduled for today, ordered by time.",
+      "upcomingClasses": "Classes scheduled for later this week (excluding today).",
+      "creditAlerts": "Students with low or zero credit balances who need attention.",
+      "inventoryAlerts": "Low stock products and overdue rentals requiring action."
+    },
+    "relationships": [
+      "Dashboard aggregates data from People, Classes, Payments, and Inventory sections",
+      "Each class references a teacher, student(s), and instrument",
+      "Credit alerts reference students and their enrollments",
+      "Inventory alerts reference products or rentals"
+    ]
+  },
+  "metrics": {
+    "classesToday": 4,
+    "studentsEnrolled": 8,
+    "activeRentals": 5,
+    "lowStockCount": 3
+  },
+  "todaysClasses": [
+    {
+      "id": "cls-today-001",
+      "time": "09:00",
+      "duration": 60,
+      "teacherName": "Sarah Mitchell",
+      "studentNames": ["Emma Roberts"],
+      "instrumentName": "Piano",
+      "type": "private"
+    },
+    {
+      "id": "cls-today-002",
+      "time": "11:00",
+      "duration": 45,
+      "teacherName": "Michael Chen",
+      "studentNames": ["Lucas Thompson"],
+      "instrumentName": "Guitar",
+      "type": "private"
+    },
+    {
+      "id": "cls-today-003",
+      "time": "14:00",
+      "duration": 60,
+      "teacherName": "Sarah Mitchell",
+      "studentNames": ["Olivia Walsh", "Noah Patel", "Sophie Anderson"],
+      "instrumentName": "Piano",
+      "type": "group"
+    },
+    {
+      "id": "cls-today-004",
+      "time": "16:30",
+      "duration": 30,
+      "teacherName": "James Rodriguez",
+      "studentNames": ["Ethan Kim"],
+      "instrumentName": "Drums",
+      "type": "private"
+    }
+  ],
+  "upcomingClasses": [
+    {
+      "id": "cls-upcoming-001",
+      "date": "2025-02-08",
+      "time": "10:00",
+      "duration": 45,
+      "teacherName": "Emily Park",
+      "studentNames": ["Mia Johnson"],
+      "instrumentName": "Violin",
+      "type": "private"
+    },
+    {
+      "id": "cls-upcoming-002",
+      "date": "2025-02-08",
+      "time": "14:00",
+      "duration": 60,
+      "teacherName": "Michael Chen",
+      "studentNames": ["Liam Walsh"],
+      "instrumentName": "Guitar",
+      "type": "private"
+    },
+    {
+      "id": "cls-upcoming-003",
+      "date": "2025-02-09",
+      "time": "09:30",
+      "duration": 60,
+      "teacherName": "Sarah Mitchell",
+      "studentNames": ["Emma Roberts"],
+      "instrumentName": "Piano",
+      "type": "private"
+    },
+    {
+      "id": "cls-upcoming-004",
+      "date": "2025-02-09",
+      "time": "11:00",
+      "duration": 45,
+      "teacherName": "Emily Park",
+      "studentNames": ["Sophie Anderson", "Noah Patel"],
+      "instrumentName": "Violin",
+      "type": "group"
+    },
+    {
+      "id": "cls-upcoming-005",
+      "date": "2025-02-10",
+      "time": "15:00",
+      "duration": 30,
+      "teacherName": "James Rodriguez",
+      "studentNames": ["Lucas Thompson"],
+      "instrumentName": "Drums",
+      "type": "private"
+    },
+    {
+      "id": "cls-upcoming-006",
+      "date": "2025-02-11",
+      "time": "16:00",
+      "duration": 60,
+      "teacherName": "Michael Chen",
+      "studentNames": ["Ethan Kim"],
+      "instrumentName": "Guitar",
+      "type": "private"
+    }
+  ],
+  "creditAlerts": [
+    {
+      "id": "alert-credit-001",
+      "studentId": "stu-003",
+      "studentName": "Mia Johnson",
+      "instrumentName": "Violin",
+      "teacherName": "Emily Park",
+      "currentBalance": 0,
+      "severity": "critical"
+    },
+    {
+      "id": "alert-credit-002",
+      "studentId": "stu-007",
+      "studentName": "Noah Patel",
+      "instrumentName": "Piano",
+      "teacherName": "Sarah Mitchell",
+      "currentBalance": 1,
+      "severity": "warning"
+    },
+    {
+      "id": "alert-credit-003",
+      "studentId": "stu-008",
+      "studentName": "Sophie Anderson",
+      "instrumentName": "Violin",
+      "teacherName": "Emily Park",
+      "currentBalance": 2,
+      "severity": "warning"
+    }
+  ],
+  "inventoryAlerts": [
+    {
+      "id": "alert-inv-001",
+      "type": "low_stock",
+      "productId": "prod-009",
+      "productName": "Practice Pad",
+      "currentStock": 1,
+      "reorderLevel": 3,
+      "severity": "critical"
+    },
+    {
+      "id": "alert-inv-002",
+      "type": "low_stock",
+      "productId": "prod-007",
+      "productName": "Hal Leonard Guitar Method Book 1",
+      "currentStock": 3,
+      "reorderLevel": 5,
+      "severity": "warning"
+    },
+    {
+      "id": "alert-inv-003",
+      "type": "overdue_rental",
+      "rentalId": "rent-002",
+      "productName": "Acoustic Guitar",
+      "customerName": "Sarah Kim",
+      "dueDate": "2025-01-15",
+      "daysOverdue": 23,
+      "severity": "critical"
+    },
+    {
+      "id": "alert-inv-004",
+      "type": "low_stock",
+      "productId": "prod-005",
+      "productName": "Guitar Capo",
+      "currentStock": 6,
+      "reorderLevel": 5,
+      "severity": "low"
+    }
+  ]
+}

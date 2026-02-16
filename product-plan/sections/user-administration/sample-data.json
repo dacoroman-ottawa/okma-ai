@@ -1,0 +1,67 @@
+{
+  "_meta": {
+    "models": {
+      "users": "Application users who can log in to the system. Each user has login credentials, admin privileges, and an active status."
+    },
+    "relationships": [
+      "AppUsers are separate from Teachers and Students - they represent system login accounts",
+      "A Teacher or Student may have an associated AppUser account for system access"
+    ]
+  },
+  "users": [
+    {
+      "id": "user-001",
+      "name": "Admin User",
+      "email": "admin@kanatamusicacademy.com",
+      "isAdmin": true,
+      "isActive": true,
+      "createdAt": "2024-01-15",
+      "lastLoginAt": "2025-02-07"
+    },
+    {
+      "id": "user-002",
+      "name": "Sarah Mitchell",
+      "email": "sarah.mitchell@kanatamusicacademy.com",
+      "isAdmin": false,
+      "isActive": true,
+      "createdAt": "2024-02-01",
+      "lastLoginAt": "2025-02-06"
+    },
+    {
+      "id": "user-003",
+      "name": "Michael Chen",
+      "email": "michael.chen@kanatamusicacademy.com",
+      "isAdmin": false,
+      "isActive": true,
+      "createdAt": "2024-02-15",
+      "lastLoginAt": "2025-02-05"
+    },
+    {
+      "id": "user-004",
+      "name": "Emily Park",
+      "email": "emily.park@kanatamusicacademy.com",
+      "isAdmin": false,
+      "isActive": true,
+      "createdAt": "2024-03-01",
+      "lastLoginAt": "2025-01-28"
+    },
+    {
+      "id": "user-005",
+      "name": "James Rodriguez",
+      "email": "james.rodriguez@kanatamusicacademy.com",
+      "isAdmin": false,
+      "isActive": false,
+      "createdAt": "2024-04-10",
+      "lastLoginAt": "2024-12-15"
+    },
+    {
+      "id": "user-006",
+      "name": "Former Admin",
+      "email": "former.admin@kanatamusicacademy.com",
+      "isAdmin": true,
+      "isActive": false,
+      "createdAt": "2024-01-15",
+      "lastLoginAt": "2024-10-20"
+    }
+  ]
+}

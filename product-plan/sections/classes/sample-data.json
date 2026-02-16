@@ -1,0 +1,247 @@
+{
+  "_meta": {
+    "models": {
+      "classes": "Scheduled music lessons that occur on a recurring weekly basis. Each class has a teacher, one or more students, an instrument, and a time slot.",
+      "attendanceRecords": "Tracks whether each student attended a specific class session on a particular date."
+    },
+    "relationships": [
+      "Each Class is taught by one Teacher",
+      "Each Class has one or more Students (private classes have one, group classes have multiple)",
+      "Each Class is for one Instrument",
+      "Each Class has a recurring schedule (weekday, time, duration, frequency)",
+      "Each Attendance Record links a Class, Student, and specific date"
+    ]
+  },
+  "classes": [
+    {
+      "id": "cls-001",
+      "teacherId": "tch-001",
+      "instrumentId": "inst-001",
+      "studentIds": ["stu-001"],
+      "type": "private",
+      "weekday": "Monday",
+      "startTime": "16:00",
+      "duration": 45,
+      "frequency": 1,
+      "status": "scheduled",
+      "notes": null
+    },
+    {
+      "id": "cls-002",
+      "teacherId": "tch-002",
+      "instrumentId": "inst-002",
+      "studentIds": ["stu-002"],
+      "type": "private",
+      "weekday": "Tuesday",
+      "startTime": "17:00",
+      "duration": 60,
+      "frequency": 2,
+      "status": "scheduled",
+      "notes": "Advanced student - working on fingerpicking techniques"
+    },
+    {
+      "id": "cls-003",
+      "teacherId": "tch-003",
+      "instrumentId": "inst-005",
+      "studentIds": ["stu-002", "stu-007"],
+      "type": "group",
+      "weekday": "Wednesday",
+      "startTime": "18:00",
+      "duration": 60,
+      "frequency": 1,
+      "status": "scheduled",
+      "notes": "Beginner vocal group - focusing on breathing exercises"
+    },
+    {
+      "id": "cls-004",
+      "teacherId": "tch-002",
+      "instrumentId": "inst-003",
+      "studentIds": ["stu-003"],
+      "type": "private",
+      "weekday": "Thursday",
+      "startTime": "15:30",
+      "duration": 30,
+      "frequency": 1,
+      "status": "scheduled",
+      "notes": null
+    },
+    {
+      "id": "cls-005",
+      "teacherId": "tch-004",
+      "instrumentId": "inst-004",
+      "studentIds": ["stu-004"],
+      "type": "private",
+      "weekday": "Tuesday",
+      "startTime": "18:00",
+      "duration": 45,
+      "frequency": 2,
+      "status": "scheduled",
+      "notes": "Working on jazz drumming patterns"
+    },
+    {
+      "id": "cls-006",
+      "teacherId": "tch-001",
+      "instrumentId": "inst-001",
+      "studentIds": ["stu-005", "stu-006"],
+      "type": "group",
+      "weekday": "Wednesday",
+      "startTime": "09:30",
+      "duration": 60,
+      "frequency": 1,
+      "status": "scheduled",
+      "notes": "Intermediate piano group - duet practice"
+    },
+    {
+      "id": "cls-007",
+      "teacherId": "tch-002",
+      "instrumentId": "inst-007",
+      "studentIds": ["stu-005"],
+      "type": "private",
+      "weekday": "Friday",
+      "startTime": "14:00",
+      "duration": 45,
+      "frequency": 1,
+      "status": "scheduled",
+      "notes": null
+    },
+    {
+      "id": "cls-008",
+      "teacherId": "tch-002",
+      "instrumentId": "inst-002",
+      "studentIds": ["stu-004"],
+      "type": "private",
+      "weekday": "Saturday",
+      "startTime": "10:00",
+      "duration": 30,
+      "frequency": 1,
+      "status": "cancelled",
+      "notes": "Student requested cancellation - vacation"
+    },
+    {
+      "id": "cls-009",
+      "teacherId": "tch-004",
+      "instrumentId": "inst-004",
+      "studentIds": ["stu-004"],
+      "type": "private",
+      "weekday": "Saturday",
+      "startTime": "11:00",
+      "duration": 60,
+      "frequency": 1,
+      "status": "scheduled",
+      "notes": "Weekend makeup session"
+    },
+    {
+      "id": "cls-010",
+      "teacherId": "tch-001",
+      "instrumentId": "inst-001",
+      "studentIds": ["stu-006"],
+      "type": "private",
+      "weekday": "Wednesday",
+      "startTime": "16:00",
+      "duration": 30,
+      "frequency": 1,
+      "status": "scheduled",
+      "notes": "Beginner - learning basic scales"
+    }
+  ],
+  "attendanceRecords": [
+    {
+      "id": "att-001",
+      "classId": "cls-001",
+      "studentId": "stu-001",
+      "date": "2025-01-27",
+      "attended": true
+    },
+    {
+      "id": "att-002",
+      "classId": "cls-001",
+      "studentId": "stu-001",
+      "date": "2025-01-20",
+      "attended": true
+    },
+    {
+      "id": "att-003",
+      "classId": "cls-001",
+      "studentId": "stu-001",
+      "date": "2025-01-13",
+      "attended": false
+    },
+    {
+      "id": "att-004",
+      "classId": "cls-002",
+      "studentId": "stu-002",
+      "date": "2025-01-28",
+      "attended": true
+    },
+    {
+      "id": "att-005",
+      "classId": "cls-002",
+      "studentId": "stu-002",
+      "date": "2025-01-24",
+      "attended": true
+    },
+    {
+      "id": "att-006",
+      "classId": "cls-003",
+      "studentId": "stu-002",
+      "date": "2025-01-29",
+      "attended": true
+    },
+    {
+      "id": "att-007",
+      "classId": "cls-003",
+      "studentId": "stu-007",
+      "date": "2025-01-29",
+      "attended": false
+    },
+    {
+      "id": "att-008",
+      "classId": "cls-004",
+      "studentId": "stu-003",
+      "date": "2025-01-30",
+      "attended": true
+    },
+    {
+      "id": "att-009",
+      "classId": "cls-005",
+      "studentId": "stu-004",
+      "date": "2025-01-28",
+      "attended": true
+    },
+    {
+      "id": "att-010",
+      "classId": "cls-005",
+      "studentId": "stu-004",
+      "date": "2025-01-24",
+      "attended": true
+    },
+    {
+      "id": "att-011",
+      "classId": "cls-006",
+      "studentId": "stu-005",
+      "date": "2025-01-29",
+      "attended": true
+    },
+    {
+      "id": "att-012",
+      "classId": "cls-006",
+      "studentId": "stu-006",
+      "date": "2025-01-29",
+      "attended": true
+    },
+    {
+      "id": "att-013",
+      "classId": "cls-006",
+      "studentId": "stu-005",
+      "date": "2025-01-22",
+      "attended": true
+    },
+    {
+      "id": "att-014",
+      "classId": "cls-006",
+      "studentId": "stu-006",
+      "date": "2025-01-22",
+      "attended": false
+    }
+  ]
+}
