@@ -8,7 +8,7 @@ import {
   ChevronRight,
   Clock,
 } from 'lucide-react'
-import type { Customer, Rental } from '../types'
+import type { Customer, Rental } from '@/types/inventory'
 
 interface CustomersTabProps {
   customers: Customer[]

@@ -8,7 +8,7 @@ import {
   ChevronRight,
   Package,
 } from 'lucide-react'
-import type { Supplier, Product } from '../types'
+import type { Supplier, Product } from '@/types/inventory'
 
 interface SuppliersTabProps {
   suppliers: Supplier[]

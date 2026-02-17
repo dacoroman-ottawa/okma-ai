@@ -7,7 +7,7 @@ import {
   RotateCcw,
   ChevronRight,
 } from 'lucide-react'
-import type { Rental, Product, Customer, RentalStatus } from '../types'
+import type { Rental, Product, Customer, RentalStatus } from '@/types/inventory'
 
 interface RentalsTabProps {
   rentals: Rental[]

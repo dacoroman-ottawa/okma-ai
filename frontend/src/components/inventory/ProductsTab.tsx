@@ -12,7 +12,7 @@ import {
   ChevronRight,
   Filter,
 } from 'lucide-react'
-import type { Product, Supplier, ProductType } from '../types'
+import type { Product, Supplier, ProductType } from '@/types/inventory'
 
 interface ProductsTabProps {
   products: Product[]

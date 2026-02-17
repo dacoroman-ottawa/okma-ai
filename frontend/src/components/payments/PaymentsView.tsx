@@ -8,7 +8,7 @@ import {
   Package,
   ChevronDown,
 } from 'lucide-react'
-import type { PaymentsProps, TransactionType } from '../types'
+import type { PaymentsProps, TransactionType, Transaction, StudentBalance } from '@/types/payments'
 import { TransactionList } from './TransactionList'
 import { StudentBalances } from './StudentBalances'
 

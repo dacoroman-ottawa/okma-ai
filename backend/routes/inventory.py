@@ -250,7 +250,7 @@ async def update_product(
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     
-    for key,(value in product_data.items():
+    for key, value in product_data.items():
         if key in ("id", "created_at"):  # Skip immutable fields
             continue
         if key == "type" and value:

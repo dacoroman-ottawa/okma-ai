@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Plus, ShoppingBag, ChevronRight } from 'lucide-react'
-import type { Sale, Product, Customer } from '../types'
+import type { Sale, Product, Customer } from '@/types/inventory'
 
 interface SalesTabProps {
   sales: Sale[]

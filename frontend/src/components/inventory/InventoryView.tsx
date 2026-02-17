@@ -6,7 +6,7 @@ import {
   Truck,
   Users,
 } from 'lucide-react'
-import type { InventoryProps } from '../types'
+import type { InventoryProps, Rental, Product } from '@/types/inventory'
 import { ProductsTab } from './ProductsTab'
 import { RentalsTab } from './RentalsTab'
 import { SalesTab } from './SalesTab'
