@@ -52,24 +52,32 @@ class RentalStatusEnum(enum.Enum):
     RETURNED = "returned"
     OVERDUE = "overdue"
 
+class TaxTypeEnum(enum.Enum):
+    HST = "HST"
+    GST = "GST"
+    NONE = "None"
+
 class TransactionTypeEnum(enum.Enum):
     PURCHASE = "purchase"
     DEDUCTION = "deduction"
     ADJUSTMENT = "adjustment"
+    INVENTORY_PAYMENT = "inventory_payment"
 
 # Association table for Group Classes
 class_students = Table(
     'class_students',
     Base.metadata,
     Column('class_id', String, ForeignKey('classes.id'), primary_key=True),
-    Column('student_id', String, ForeignKey('students.id'), primary_key=True)
+    Column('student_id', String, ForeignKey('students.id'), primary_key=True),
+    extend_existing=True
 )
 
 teacher_instruments = Table(
     'teacher_instruments',
     Base.metadata,
     Column('teacher_id', String, ForeignKey('teachers.id'), primary_key=True),
-    Column('instrument_id', String, ForeignKey('instruments.id'), primary_key=True)
+    Column('instrument_id', String, ForeignKey('instruments.id'), primary_key=True),
+    extend_existing=True
 )
 
 class Teacher(Base):
@@ -227,6 +235,13 @@ class CreditTransaction(Base):
     credits = Column(Float)
     amount = Column(Float)
     type = Column(Enum(TransactionTypeEnum))
+    payment_method = Column(String)
+    tax_type = Column(Enum(TaxTypeEnum), default=TaxTypeEnum.NONE)
+    tax_amount = Column(Float, default=0.0)
+    subtotal = Column(Float, default=0.0)
+    discount_amount = Column(Float, default=0.0)
+    note = Column(String)
+    line_items = Column(String) # JSON string for inventory items
 
     student = relationship("Student", back_populates="transactions")
 
