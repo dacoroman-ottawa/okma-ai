@@ -63,6 +63,15 @@ class TransactionTypeEnum(enum.Enum):
     ADJUSTMENT = "adjustment"
     INVENTORY_PAYMENT = "inventory_payment"
 
+class RentalPeriodEnum(enum.Enum):
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+
+class RentalStatusEnum(enum.Enum):
+    ACTIVE = "active"
+    OVERDUE = "overdue"
+    RETURNED = "returned"
+
 # Association table for Group Classes
 class_students = Table(
     'class_students',
@@ -120,8 +129,6 @@ class Student(Base):
     skill_levels = relationship("SkillLevel", back_populates="student")
     enrollments = relationship("Enrollment", back_populates="student")
     classes = relationship("Class", secondary=class_students, back_populates="students")
-    rentals = relationship("Rental", back_populates="customer")
-    sales = relationship("Sale", back_populates="customer")
     transactions = relationship("CreditTransaction", back_populates="student")
     availability = relationship("AvailabilitySlot", back_populates="student")
 
@@ -164,9 +171,10 @@ class Class(Base):
     enrollment = relationship("Enrollment", back_populates="classes")
 
 class Product(Base):
+    __table_args__ = {'extend_existing': True}
     __tablename__ = "products"
     id = Column(String, primary_key=True)
-    type = Column(Enum(ProductTypeEnum))
+    type = Column(Enum(ProductTypeEnum), nullable=False)
     name = Column(String, nullable=False)
     model = Column(String)
     serial_number = Column(String)
@@ -176,55 +184,77 @@ class Product(Base):
     rental_price = Column(Float)
     stock_quantity = Column(Integer, default=0)
     reorder_level = Column(Integer, default=5)
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    supplier = relationship("Supplier", back_populates="products")
 
     rentals = relationship("Rental", back_populates="product")
     sales = relationship("Sale", back_populates="product")
 
 class Supplier(Base):
     __tablename__ = "suppliers"
+    __table_args__ = {'extend_existing': True}
     id = Column(String, primary_key=True)
     name = Column(String, nullable=False)
     contact_person = Column(String)
     email = Column(String)
     phone = Column(String)
     address = Column(String)
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    products = relationship("Product", back_populates="supplier")
 
 class Customer(Base):
     __tablename__ = "customers"
-    id = Column(String, primary_key=True)
+    __table_args__ = {'extend_existing': True}
+    id = Column(String, primary_key=True) 
     name = Column(String, nullable=False)
     email = Column(String)
     phone = Column(String)
     address = Column(String)
     notes = Column(String)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    rentals = relationship("Rental", back_populates="customer")
+    sales = relationship("Sale", back_populates="customer")
 
 class Rental(Base):
     __tablename__ = "rentals"
+    __table_args__ = {'extend_existing': True}
     id = Column(String, primary_key=True)
     product_id = Column(String, ForeignKey("products.id"))
-    customer_id = Column(String, ForeignKey("students.id")) # Assuming students can be rental customers
-    rental_period = Column(String)
+    customer_id = Column(String, ForeignKey("customers.id"))
+    rental_period = Column(Enum(RentalPeriodEnum))
     start_date = Column(Date)
     due_date = Column(Date)
+    return_date = Column(Date)
     deposit = Column(Float)
-    late_fee = Column(Float)
+    rental_fee = Column(Float)
+    late_fee = Column(Float, default=0)
     status = Column(Enum(RentalStatusEnum), default=RentalStatusEnum.ACTIVE)
+    condition_notes = Column(String)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     product = relationship("Product", back_populates="rentals")
-    customer = relationship("Student", back_populates="rentals")
+    customer = relationship("Customer", back_populates="rentals")
 
 class Sale(Base):
     __tablename__ = "sales"
+    __table_args__ = {'extend_existing': True}
     id = Column(String, primary_key=True)
     product_id = Column(String, ForeignKey("products.id"))
-    customer_id = Column(String, ForeignKey("students.id"))
-    date = Column(DateTime)
+    customer_id = Column(String, ForeignKey("customers.id"))
+    date = Column(Date)
     quantity = Column(Integer)
-    amount = Column(Float)
+    unit_price = Column(Float)
+    total_amount = Column(Float)
     payment_method = Column(String)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     product = relationship("Product", back_populates="sales")
-    customer = relationship("Student", back_populates="sales")
+    customer = relationship("Customer", back_populates="sales")
 
 class CreditTransaction(Base):
     __tablename__ = "credit_transactions"
@@ -293,3 +323,8 @@ class AttendanceRecord(Base):
 
     class_ = relationship("Class")
     student = relationship("Student")
+
+# ============================================================================= 
+# Inventory Models
+# =============================================================================
+
