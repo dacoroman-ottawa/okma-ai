@@ -1,32 +1,29 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { usePeople } from "@/hooks/usePeople";
-import { TeacherDetail } from "@/components/people";
+import { TeacherDetail, TeacherEditModal } from "@/components/people";
+import { toCamel } from "@/lib/utils";
 import type { Teacher } from "@/types/people";
-
-function toCamel(obj: any): any {
-    if (Array.isArray(obj)) {
-        return obj.map(v => toCamel(v));
-    } else if (obj !== null && obj.constructor === Object) {
-        return Object.keys(obj).reduce(
-            (result, key) => ({
-                ...result,
-                [key.replace(/(_\w)/g, k => k[1].toUpperCase())]: toCamel(obj[key]),
-            }),
-            {},
-        );
-    }
-    return obj;
-}
 
 export default function TeacherDetailPage() {
     const { id } = useParams();
     const router = useRouter();
-    const { instruments, enrollments, students } = usePeople();
+    const searchParams = useSearchParams();
+    const { instruments, enrollments, students, updateTeacher } = usePeople();
     const [teacher, setTeacher] = useState<Teacher | null>(null);
     const [loading, setLoading] = useState(true);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+    // Open edit modal if ?edit=true is in URL
+    useEffect(() => {
+        if (searchParams.get("edit") === "true" && teacher && !loading) {
+            setIsEditModalOpen(true);
+            // Clear the query param after opening
+            router.replace(`/people/teachers/${id}`, { scroll: false });
+        }
+    }, [searchParams, teacher, loading, id, router]);
 
     useEffect(() => {
         async function fetchDetail() {
@@ -66,17 +63,32 @@ export default function TeacherDetailPage() {
         );
     }
 
+    const handleSaveTeacher = async (data: Partial<Teacher>) => {
+        if (!teacher) return;
+        const updated = await updateTeacher(teacher.id, data);
+        setTeacher((prev) => prev ? { ...prev, ...updated } : prev);
+    };
+
     return (
-        <TeacherDetail
-            teacher={teacher}
-            instruments={instruments}
-            availability={teacher.availability || []}
-            enrollments={enrollments}
-            students={students}
-            onBack={() => router.back()}
-            onEdit={() => console.log("Edit Teacher", id)}
-            onDelete={() => console.log("Delete Teacher", id)}
-            onViewStudent={(studentId) => router.push(`/people/students/${studentId}`)}
-        />
+        <>
+            <TeacherDetail
+                teacher={teacher}
+                instruments={instruments}
+                availability={teacher.availability || []}
+                enrollments={enrollments}
+                students={students}
+                onBack={() => router.back()}
+                onEdit={() => setIsEditModalOpen(true)}
+                onDelete={() => console.log("Delete Teacher", id)}
+                onViewStudent={(studentId) => router.push(`/people/students/${studentId}`)}
+            />
+            <TeacherEditModal
+                teacher={teacher}
+                instruments={instruments}
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                onSave={handleSaveTeacher}
+            />
+        </>
     );
 }

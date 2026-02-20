@@ -66,6 +66,45 @@ export function usePeople() {
         fetchData();
     }, []);
 
+    const getAuthToken = async () => {
+        const tokenRes = await fetch("http://localhost:8000/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+                username: "admin@kanatamusic.com",
+                password: "admin123"
+            })
+        });
+        const { access_token } = await tokenRes.json();
+        return access_token;
+    };
+
+    const updateTeacher = async (id: string, data: any) => {
+        const token = await getAuthToken();
+        const res = await fetch(`http://localhost:8000/people/teachers/${id}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.detail || "Failed to update teacher");
+        }
+
+        const updatedTeacher = toCamel(await res.json());
+
+        // Update local state
+        setTeachers((prev) =>
+            prev.map((t) => (t.id === id ? { ...t, ...updatedTeacher } : t))
+        );
+
+        return updatedTeacher;
+    };
+
     return {
         teachers,
         students,
@@ -75,7 +114,7 @@ export function usePeople() {
         studentAvailability,
         loading,
         addTeacher: async (data: any) => console.log("Add Teacher", data),
-        updateTeacher: async (id: string, data: any) => console.log("Update Teacher", id, data),
+        updateTeacher,
         deleteTeacher: async (id: string) => console.log("Delete Teacher", id),
     };
 }

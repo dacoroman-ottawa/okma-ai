@@ -46,6 +46,7 @@ export default function PeoplePage() {
                         students={students}
                         onViewTeacher={(id) => router.push(`/people/teachers/${id}`)}
                         onAddTeacher={() => console.log("Add Teacher Modal")}
+                        onEditTeacher={(id) => router.push(`/people/teachers/${id}?edit=true`)}
                     />
                 ) : (
                     <StudentsList

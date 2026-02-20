@@ -182,5 +182,96 @@ async def create_teacher(
     
     # 3. Trigger Welcome Email
     await send_welcome_email(new_user.email, new_user.name, "Teacher")
-    
+
     return new_teacher
+
+@router.put("/teachers/{teacher_id}")
+async def update_teacher(
+    teacher_id: str,
+    teacher_data: dict,
+    db: Any = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    teacher = db.query(Teacher).filter(Teacher.id == teacher_id).first()
+    if not teacher:
+        raise HTTPException(status_code=404, detail="Teacher not found")
+
+    # RBAC: Only admin or the teacher themselves can update
+    if not current_user.is_admin and current_user.id != teacher.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    # Update allowed fields
+    if "name" in teacher_data:
+        teacher.name = teacher_data["name"]
+        # Also update the associated AppUser name
+        if teacher.user:
+            teacher.user.name = teacher_data["name"]
+    if "email" in teacher_data:
+        teacher.email = teacher_data["email"]
+        if teacher.user:
+            teacher.user.email = teacher_data["email"]
+    if "primaryContact" in teacher_data:
+        teacher.primary_contact = teacher_data["primaryContact"]
+    if "address" in teacher_data:
+        teacher.address = teacher_data["address"]
+    if "biography" in teacher_data:
+        teacher.biography = teacher_data["biography"]
+    if "specialization" in teacher_data:
+        teacher.specialization = teacher_data["specialization"]
+    if "qualification" in teacher_data:
+        from ..models import QualificationEnum
+        qual_value = teacher_data["qualification"]
+        # Handle both enum value strings and display names
+        qual_map = {
+            "Bachelor of Music": QualificationEnum.BACHELOR,
+            "Master": QualificationEnum.MASTER,
+            "Doctorate": QualificationEnum.DOCTORATE,
+            "Professional Certificate": QualificationEnum.CERTIFICATE,
+            "Self-Taught Professional": QualificationEnum.SELF_TAUGHT,
+        }
+        if qual_value in qual_map:
+            teacher.qualification = qual_map[qual_value]
+    if "hourlyRate" in teacher_data:
+        teacher.hourly_rate = teacher_data["hourlyRate"]
+    if "active" in teacher_data:
+        teacher.active = teacher_data["active"]
+    if "dateOfBirth" in teacher_data:
+        from datetime import date
+        dob = teacher_data["dateOfBirth"]
+        if dob:
+            teacher.date_of_birth = date.fromisoformat(dob) if isinstance(dob, str) else dob
+        else:
+            teacher.date_of_birth = None
+    if "dateOfEnrollment" in teacher_data:
+        from datetime import date
+        doe = teacher_data["dateOfEnrollment"]
+        if doe:
+            teacher.date_of_enrollment = date.fromisoformat(doe) if isinstance(doe, str) else doe
+    if "socialInsuranceNumber" in teacher_data:
+        teacher.social_insurance_number = teacher_data["socialInsuranceNumber"]
+
+    # Update instruments
+    if "instrumentsTaught" in teacher_data:
+        instrument_ids = teacher_data["instrumentsTaught"]
+        instruments = db.query(Instrument).filter(Instrument.id.in_(instrument_ids)).all()
+        teacher.instruments = instruments
+
+    db.commit()
+    db.refresh(teacher)
+
+    return {
+        "id": teacher.id,
+        "name": teacher.name,
+        "email": teacher.email,
+        "primaryContact": teacher.primary_contact,
+        "address": teacher.address,
+        "biography": teacher.biography,
+        "specialization": teacher.specialization,
+        "qualification": teacher.qualification.value if teacher.qualification else None,
+        "active": teacher.active,
+        "dateOfEnrollment": teacher.date_of_enrollment,
+        "dateOfBirth": teacher.date_of_birth,
+        "socialInsuranceNumber": teacher.social_insurance_number,
+        "hourlyRate": teacher.hourly_rate,
+        "instrumentsTaught": [i.id for i in teacher.instruments],
+    }

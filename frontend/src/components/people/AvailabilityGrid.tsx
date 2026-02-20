@@ -1,3 +1,4 @@
+import React from 'react'
 import type { AvailabilitySlot } from '@/types/people'
 
 interface AvailabilityGridProps {
@@ -51,9 +52,8 @@ export function AvailabilityGrid({ slots, editable = false, onUpdate }: Availabi
         {/* Time rows */}
         <div className="grid grid-cols-8 gap-px bg-slate-200 dark:bg-slate-700">
           {HOURS.map((hour) => (
-            <>
+            <React.Fragment key={hour}>
               <div
-                key={`label-${hour}`}
                 className="bg-white p-2 text-right text-xs text-slate-500 dark:bg-slate-900 dark:text-slate-400"
               >
                 {formatHour(hour)}
@@ -80,7 +80,7 @@ export function AvailabilityGrid({ slots, editable = false, onUpdate }: Availabi
                   />
                 )
               })}
-            </>
+            </React.Fragment>
           ))}
         </div>
       </div>
