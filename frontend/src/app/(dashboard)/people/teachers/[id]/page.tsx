@@ -77,7 +77,7 @@ export default function TeacherDetailPage() {
                 availability={teacher.availability || []}
                 enrollments={enrollments}
                 students={students}
-                onBack={() => router.back()}
+                onBack={() => router.push("/people")}
                 onEdit={() => setIsEditModalOpen(true)}
                 onDelete={() => console.log("Delete Teacher", id)}
                 onViewStudent={(studentId) => router.push(`/people/students/${studentId}`)}

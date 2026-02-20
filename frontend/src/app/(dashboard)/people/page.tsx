@@ -1,12 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePeople } from "@/hooks/usePeople";
 import { TeachersList, StudentsList } from "@/components/people";
 import { useRouter } from "next/navigation";
 
 export default function PeoplePage() {
     const [activeTab, setActiveTab] = useState<"teachers" | "students">("teachers");
+
+    // Restore last active tab from sessionStorage on mount
+    useEffect(() => {
+        const savedTab = sessionStorage.getItem("peopleActiveTab");
+        if (savedTab === "students" || savedTab === "teachers") {
+            setActiveTab(savedTab);
+        }
+    }, []);
+
+    // Save active tab to sessionStorage when it changes
+    const handleTabChange = (tab: "teachers" | "students") => {
+        setActiveTab(tab);
+        sessionStorage.setItem("peopleActiveTab", tab);
+    };
     const { teachers, students, instruments, teacherAvailability, studentAvailability, enrollments } = usePeople();
     const router = useRouter();
 
@@ -16,7 +30,7 @@ export default function PeoplePage() {
             <div className="border-b border-slate-200 bg-white px-8 dark:border-slate-800 dark:bg-slate-900">
                 <nav className="-mb-px flex gap-8">
                     <button
-                        onClick={() => setActiveTab("teachers")}
+                        onClick={() => handleTabChange("teachers")}
                         className={`py-4 text-sm font-medium transition-colors ${activeTab === "teachers"
                                 ? "border-b-2 border-indigo-600 text-indigo-600"
                                 : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
@@ -25,7 +39,7 @@ export default function PeoplePage() {
                         Teachers
                     </button>
                     <button
-                        onClick={() => setActiveTab("students")}
+                        onClick={() => handleTabChange("students")}
                         className={`py-4 text-sm font-medium transition-colors ${activeTab === "students"
                                 ? "border-b-2 border-indigo-600 text-indigo-600"
                                 : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
@@ -57,6 +71,7 @@ export default function PeoplePage() {
                         teachers={teachers}
                         onViewStudent={(id) => router.push(`/people/students/${id}`)}
                         onAddStudent={() => console.log("Add Student Modal")}
+                        onEditStudent={(id) => router.push(`/people/students/${id}?edit=true`)}
                     />
                 )}
             </div>

@@ -275,3 +275,128 @@ async def update_teacher(
         "hourlyRate": teacher.hourly_rate,
         "instrumentsTaught": [i.id for i in teacher.instruments],
     }
+
+@router.get("/students/{student_id}")
+async def get_student(
+    student_id: str,
+    db: Any = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    # RBAC: Admin sees all, student sees self
+    if not current_user.is_admin and current_user.id != student.user_id:
+        # Also allow teachers who have this student enrolled
+        if current_user.role == UserRoleEnum.TEACHER:
+            from ..models import Enrollment
+            enrollment = db.query(Enrollment).filter(
+                Enrollment.student_id == student_id,
+                Enrollment.teacher_id == current_user.teacher.id if hasattr(current_user, 'teacher') and current_user.teacher else None
+            ).first()
+            if not enrollment:
+                raise HTTPException(status_code=403, detail="Not authorized")
+        else:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+    return {
+        "id": student.id,
+        "name": student.name,
+        "email": student.email,
+        "primaryContact": student.primary_contact,
+        "address": student.address,
+        "dateOfBirth": student.date_of_birth,
+        "active": student.active,
+        "skillLevels": [
+            {
+                "instrumentId": sl.instrument_id,
+                "level": sl.level.value if sl.level else None
+            } for sl in student.skill_levels
+        ],
+        "availability": [
+            {
+                "day": slot.day,
+                "startTime": slot.start_time,
+                "endTime": slot.end_time
+            } for slot in student.availability
+        ]
+    }
+
+@router.put("/students/{student_id}")
+async def update_student(
+    student_id: str,
+    student_data: dict,
+    db: Any = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    # RBAC: Only admin or the student themselves can update
+    if not current_user.is_admin and current_user.id != student.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    # Update allowed fields
+    if "name" in student_data:
+        student.name = student_data["name"]
+        if student.user:
+            student.user.name = student_data["name"]
+    if "email" in student_data:
+        student.email = student_data["email"]
+        if student.user:
+            student.user.email = student_data["email"]
+    if "primaryContact" in student_data:
+        student.primary_contact = student_data["primaryContact"]
+    if "address" in student_data:
+        student.address = student_data["address"]
+    if "active" in student_data:
+        student.active = student_data["active"]
+    if "dateOfBirth" in student_data:
+        from datetime import date
+        dob = student_data["dateOfBirth"]
+        if dob:
+            student.date_of_birth = date.fromisoformat(dob) if isinstance(dob, str) else dob
+        else:
+            student.date_of_birth = None
+
+    # Update skill levels if provided
+    if "skillLevels" in student_data:
+        from ..models import SkillLevelEnum
+        # Clear existing skill levels
+        for sl in student.skill_levels:
+            db.delete(sl)
+
+        # Add new skill levels
+        for skill_data in student_data["skillLevels"]:
+            level_map = {
+                "Beginner": SkillLevelEnum.BEGINNER,
+                "Intermediate": SkillLevelEnum.INTERMEDIATE,
+                "Advanced": SkillLevelEnum.ADVANCED,
+            }
+            new_skill = SkillLevel(
+                student_id=student.id,
+                instrument_id=skill_data["instrumentId"],
+                level=level_map.get(skill_data["level"], SkillLevelEnum.BEGINNER)
+            )
+            db.add(new_skill)
+
+    db.commit()
+    db.refresh(student)
+
+    return {
+        "id": student.id,
+        "name": student.name,
+        "email": student.email,
+        "primaryContact": student.primary_contact,
+        "address": student.address,
+        "dateOfBirth": student.date_of_birth,
+        "active": student.active,
+        "skillLevels": [
+            {
+                "instrumentId": sl.instrument_id,
+                "level": sl.level.value if sl.level else None
+            } for sl in student.skill_levels
+        ],
+    }

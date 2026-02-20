@@ -105,6 +105,32 @@ export function usePeople() {
         return updatedTeacher;
     };
 
+    const updateStudent = async (id: string, data: any) => {
+        const token = await getAuthToken();
+        const res = await fetch(`http://localhost:8000/people/students/${id}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.detail || "Failed to update student");
+        }
+
+        const updatedStudent = toCamel(await res.json());
+
+        // Update local state
+        setStudents((prev) =>
+            prev.map((s) => (s.id === id ? { ...s, ...updatedStudent } : s))
+        );
+
+        return updatedStudent;
+    };
+
     return {
         teachers,
         students,
@@ -116,5 +142,8 @@ export function usePeople() {
         addTeacher: async (data: any) => console.log("Add Teacher", data),
         updateTeacher,
         deleteTeacher: async (id: string) => console.log("Delete Teacher", id),
+        addStudent: async (data: any) => console.log("Add Student", data),
+        updateStudent,
+        deleteStudent: async (id: string) => console.log("Delete Student", id),
     };
 }
