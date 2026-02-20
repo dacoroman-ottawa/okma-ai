@@ -400,3 +400,47 @@ async def update_student(
             } for sl in student.skill_levels
         ],
     }
+
+@router.put("/teachers/{teacher_id}/availability")
+async def update_teacher_availability(
+    teacher_id: str,
+    availability_data: dict,
+    db: Any = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    teacher = db.query(Teacher).filter(Teacher.id == teacher_id).first()
+    if not teacher:
+        raise HTTPException(status_code=404, detail="Teacher not found")
+
+    # RBAC: Only admin or the teacher themselves can update
+    if not current_user.is_admin and current_user.id != teacher.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    # Clear existing availability
+    for slot in teacher.availability:
+        db.delete(slot)
+
+    # Add new availability slots
+    slots = availability_data.get("slots", [])
+    for slot_data in slots:
+        new_slot = AvailabilitySlot(
+            teacher_id=teacher.id,
+            day=slot_data["day"],
+            start_time=slot_data["startTime"],
+            end_time=slot_data["endTime"]
+        )
+        db.add(new_slot)
+
+    db.commit()
+    db.refresh(teacher)
+
+    return {
+        "id": teacher.id,
+        "availability": [
+            {
+                "day": slot.day,
+                "startTime": slot.start_time,
+                "endTime": slot.end_time
+            } for slot in teacher.availability
+        ]
+    }

@@ -299,3 +299,96 @@ class TestGetTeachers:
         data = response.json()
         assert len(data) >= 1
         assert any(t["id"] == "tch-1" for t in data)
+
+
+class TestUpdateTeacherAvailability:
+    """Tests for PUT /people/teachers/{teacher_id}/availability"""
+
+    def test_update_availability_as_admin(self):
+        """Admin can update teacher availability"""
+        app.dependency_overrides[get_current_user] = mock_admin_user
+
+        response = client.put("/people/teachers/tch-1/availability", json={
+            "slots": [
+                {"day": "Monday", "startTime": "09:00", "endTime": "17:00"},
+                {"day": "Tuesday", "startTime": "10:00", "endTime": "18:00"}
+            ]
+        })
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["id"] == "tch-1"
+        assert len(data["availability"]) == 2
+
+    def test_update_availability_clears_existing(self):
+        """Updating availability replaces all existing slots"""
+        app.dependency_overrides[get_current_user] = mock_admin_user
+
+        # First set some availability
+        client.put("/people/teachers/tch-1/availability", json={
+            "slots": [
+                {"day": "Monday", "startTime": "09:00", "endTime": "17:00"},
+                {"day": "Tuesday", "startTime": "09:00", "endTime": "17:00"},
+                {"day": "Wednesday", "startTime": "09:00", "endTime": "17:00"}
+            ]
+        })
+
+        # Then update with fewer slots
+        response = client.put("/people/teachers/tch-1/availability", json={
+            "slots": [
+                {"day": "Friday", "startTime": "12:00", "endTime": "20:00"}
+            ]
+        })
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["availability"]) == 1
+        assert data["availability"][0]["day"] == "Friday"
+
+    def test_update_availability_empty_slots(self):
+        """Can clear all availability by passing empty slots"""
+        app.dependency_overrides[get_current_user] = mock_admin_user
+
+        response = client.put("/people/teachers/tch-1/availability", json={
+            "slots": []
+        })
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["availability"]) == 0
+
+    def test_update_availability_nonexistent_teacher(self):
+        """Updating availability for non-existent teacher returns 404"""
+        app.dependency_overrides[get_current_user] = mock_admin_user
+
+        response = client.put("/people/teachers/tch-nonexistent/availability", json={
+            "slots": [{"day": "Monday", "startTime": "09:00", "endTime": "17:00"}]
+        })
+
+        assert response.status_code == 404
+        assert response.json()["detail"] == "Teacher not found"
+
+    def test_teacher_can_update_own_availability(self):
+        """Teacher can update their own availability"""
+        app.dependency_overrides[get_current_user] = mock_teacher_user
+
+        response = client.put("/people/teachers/tch-1/availability", json={
+            "slots": [
+                {"day": "Thursday", "startTime": "14:00", "endTime": "20:00"}
+            ]
+        })
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["availability"]) == 1
+
+    def test_teacher_cannot_update_other_teacher_availability(self):
+        """Teacher cannot update another teacher's availability"""
+        app.dependency_overrides[get_current_user] = mock_other_teacher_user
+
+        response = client.put("/people/teachers/tch-1/availability", json={
+            "slots": [{"day": "Monday", "startTime": "09:00", "endTime": "17:00"}]
+        })
+
+        assert response.status_code == 403
+        assert response.json()["detail"] == "Not authorized"

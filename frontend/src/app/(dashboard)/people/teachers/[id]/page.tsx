@@ -3,18 +3,19 @@
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { usePeople } from "@/hooks/usePeople";
-import { TeacherDetail, TeacherEditModal } from "@/components/people";
+import { TeacherDetail, TeacherEditModal, AvailabilityEditModal } from "@/components/people";
 import { toCamel } from "@/lib/utils";
-import type { Teacher } from "@/types/people";
+import type { Teacher, AvailabilitySlot } from "@/types/people";
 
 export default function TeacherDetailPage() {
     const { id } = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { instruments, enrollments, students, updateTeacher } = usePeople();
+    const { instruments, enrollments, students, updateTeacher, updateTeacherAvailability } = usePeople();
     const [teacher, setTeacher] = useState<Teacher | null>(null);
     const [loading, setLoading] = useState(true);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [isAvailabilityModalOpen, setIsAvailabilityModalOpen] = useState(false);
 
     // Open edit modal if ?edit=true is in URL
     useEffect(() => {
@@ -69,6 +70,17 @@ export default function TeacherDetailPage() {
         setTeacher((prev) => prev ? { ...prev, ...updated } : prev);
     };
 
+    const handleSaveAvailability = async (slots: AvailabilitySlot[]) => {
+        if (!teacher) return;
+        const updatedSlots = await updateTeacherAvailability(teacher.id, slots);
+        setTeacher((prev) => prev ? { ...prev, availability: updatedSlots } : prev);
+    };
+
+    const handleOpenAvailabilityModal = () => {
+        setIsEditModalOpen(false);
+        setIsAvailabilityModalOpen(true);
+    };
+
     return (
         <>
             <TeacherDetail
@@ -88,6 +100,13 @@ export default function TeacherDetailPage() {
                 isOpen={isEditModalOpen}
                 onClose={() => setIsEditModalOpen(false)}
                 onSave={handleSaveTeacher}
+                onEditAvailability={handleOpenAvailabilityModal}
+            />
+            <AvailabilityEditModal
+                slots={teacher.availability || []}
+                isOpen={isAvailabilityModalOpen}
+                onClose={() => setIsAvailabilityModalOpen(false)}
+                onSave={handleSaveAvailability}
             />
         </>
     );

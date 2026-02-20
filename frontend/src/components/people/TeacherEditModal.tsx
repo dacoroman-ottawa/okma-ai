@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, Calendar } from "lucide-react";
 import type { Teacher, Instrument, Qualification } from "@/types/people";
 
 interface TeacherEditModalProps {
@@ -10,6 +10,7 @@ interface TeacherEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: Partial<Teacher>) => Promise<void>;
+  onEditAvailability?: () => void;
 }
 
 const QUALIFICATIONS: Qualification[] = [
@@ -26,6 +27,7 @@ export function TeacherEditModal({
   isOpen,
   onClose,
   onSave,
+  onEditAvailability,
 }: TeacherEditModalProps) {
   const [formData, setFormData] = useState({
     name: teacher.name || "",
@@ -366,6 +368,30 @@ export function TeacherEditModal({
               </div>
             </div>
           </div>
+
+          {/* Weekly Availability Button */}
+          {onEditAvailability && (
+            <div className="mt-6 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                    Weekly Availability
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Set when this teacher is available for classes
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={onEditAvailability}
+                  className="inline-flex items-center gap-2 rounded-lg bg-indigo-100 px-3 py-2 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300 dark:hover:bg-indigo-900"
+                >
+                  <Calendar className="h-4 w-4" />
+                  Edit Availability
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="mt-8 flex items-center justify-end gap-3 border-t border-slate-200 pt-6 dark:border-slate-700">
