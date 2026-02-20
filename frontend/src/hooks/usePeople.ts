@@ -158,6 +158,33 @@ export function usePeople() {
         return result.availability;
     };
 
+    const updateStudentAvailability = async (id: string, slots: AvailabilitySlot[]) => {
+        const token = await getAuthToken();
+        const res = await fetch(`http://localhost:8000/people/students/${id}/availability`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ slots })
+        });
+
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.detail || "Failed to update availability");
+        }
+
+        const result = toCamel(await res.json());
+
+        // Update local student availability state
+        setStudentAvailability((prev) => ({
+            ...prev,
+            [id]: result.availability
+        }));
+
+        return result.availability;
+    };
+
     return {
         teachers,
         students,
@@ -172,6 +199,7 @@ export function usePeople() {
         deleteTeacher: async (id: string) => console.log("Delete Teacher", id),
         addStudent: async (data: any) => console.log("Add Student", data),
         updateStudent,
+        updateStudentAvailability,
         deleteStudent: async (id: string) => console.log("Delete Student", id),
     };
 }
