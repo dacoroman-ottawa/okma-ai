@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import Annotated, Any
 from .database import init_db, get_db
-from .routes import people, classes, payments, inventory, dashboard
+from .routes import people, classes, payments, inventory, dashboard, users, auth
 from .auth import authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from fastapi.exceptions import RequestValidationError
 from datetime import timedelta
@@ -28,6 +28,8 @@ app.include_router(classes.router)
 app.include_router(payments.router)
 app.include_router(inventory.router)
 app.include_router(dashboard.router)
+app.include_router(users.router)
+app.include_router(auth.router)
 
 @app.post("/token")
 async def login_for_access_token(

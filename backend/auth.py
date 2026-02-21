@@ -79,3 +79,22 @@ def RoleChecker(allowed_roles: List[UserRoleEnum]):
             )
         return current_user
     return checker
+
+
+def create_password_reset_token(email: str) -> str:
+    """Create a JWT token for password reset (expires in 24 hours)"""
+    expire = datetime.utcnow() + timedelta(hours=24)
+    to_encode = {"sub": email, "type": "password_reset", "exp": expire}
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def verify_password_reset_token(token: str) -> Optional[str]:
+    """Verify a password reset token and return the email if valid"""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != "password_reset":
+            return None
+        email: str = payload.get("sub")
+        return email
+    except JWTError:
+        return None
