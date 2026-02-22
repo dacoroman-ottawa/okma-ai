@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/shell/AppShell";
 
 const navigationItems = [
@@ -19,6 +20,30 @@ export default function DashboardLayout({
 }) {
     const pathname = usePathname();
     const router = useRouter();
+    const [user, setUser] = useState<{ name: string } | null>(null);
+
+    useEffect(() => {
+        // Load user from localStorage
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+            try {
+                const parsed = JSON.parse(storedUser);
+                setUser({ name: parsed.name || "User" });
+            } catch {
+                setUser({ name: "Admin User" });
+            }
+        } else {
+            setUser({ name: "Admin User" });
+        }
+    }, []);
+
+    const handleLogout = () => {
+        // Clear auth data
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("user");
+        // Redirect to login
+        router.push("/login");
+    };
 
     const items = navigationItems.map((item) => ({
         ...item,
@@ -29,8 +54,8 @@ export default function DashboardLayout({
         <AppShell
             navigationItems={items}
             onNavigate={(href) => router.push(href)}
-            user={{ name: "Admin User" }}
-            onLogout={() => console.log("Logout triggered")}
+            user={user || { name: "User" }}
+            onLogout={handleLogout}
         >
             {children}
         </AppShell>

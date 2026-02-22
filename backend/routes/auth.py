@@ -2,17 +2,98 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Any
 from pydantic import BaseModel
+from datetime import timedelta, datetime
 from ..database import get_db
 from ..models import AppUser
-from ..auth import verify_password_reset_token, get_password_hash
+from ..auth import (
+    verify_password_reset_token,
+    get_password_hash,
+    authenticate_user,
+    create_access_token,
+    ACCESS_TOKEN_EXPIRE_MINUTES
+)
+from ..services.email import send_password_reset_email
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
 
 
 class ResetPasswordRequest(BaseModel):
     token: str
     email: str
     newPassword: str
+
+
+@router.post("/login")
+async def login(
+    request: LoginRequest,
+    db: Any = Depends(get_db)
+):
+    """Authenticate user and return access token"""
+    user = authenticate_user(db, request.email, request.password)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password"
+        )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is deactivated. Please contact an administrator."
+        )
+
+    # Update last login time
+    user.last_login_at = datetime.utcnow()
+    db.commit()
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email}, expires_delta=access_token_expires
+    )
+
+    return {
+        "accessToken": access_token,
+        "tokenType": "bearer",
+        "user": {
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "role": user.role.value if user.role else None,
+            "isAdmin": user.is_admin
+        }
+    }
+
+
+@router.post("/forgot-password")
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    db: Any = Depends(get_db)
+):
+    """Send password reset email"""
+    # Find the user
+    user = db.query(AppUser).filter(AppUser.email == request.email).first()
+
+    # Always return success to prevent email enumeration
+    if not user:
+        return {"message": "If an account exists with this email, a reset link has been sent."}
+
+    if not user.is_active:
+        return {"message": "If an account exists with this email, a reset link has been sent."}
+
+    # Send reset email
+    await send_password_reset_email(user.email, user.name)
+
+    return {"message": "If an account exists with this email, a reset link has been sent."}
 
 
 @router.post("/reset-password")
