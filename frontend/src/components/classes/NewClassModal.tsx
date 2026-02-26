@@ -1,8 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Plus, Trash2 } from "lucide-react";
-import type { Weekday, ClassType, Duration } from "@/types/classes";
+import { X, Plus, Trash2, Calendar, ChevronDown, ChevronUp } from "lucide-react";
+import type { Weekday, ClassType, Duration, Class } from "@/types/classes";
+import { AvailabilityPicker } from "./AvailabilityPicker";
+
+interface AvailabilitySlot {
+  day: string;
+  startTime: string;
+  endTime: string;
+}
 
 interface Teacher {
   id: string;
@@ -24,6 +31,9 @@ interface NewClassModalProps {
   teachers: Teacher[];
   students: Student[];
   instruments: Instrument[];
+  teacherAvailability?: Record<string, AvailabilitySlot[]>;
+  studentAvailability?: Record<string, AvailabilitySlot[]>;
+  existingClasses?: Class[];
   isOpen: boolean;
   onClose: () => void;
   onSave: (data: {
@@ -61,6 +71,9 @@ export function NewClassModal({
   teachers,
   students,
   instruments,
+  teacherAvailability = {},
+  studentAvailability = {},
+  existingClasses = [],
   isOpen,
   onClose,
   onSave,
@@ -78,6 +91,7 @@ export function NewClassModal({
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAvailability, setShowAvailability] = useState(false);
 
   // Reset form when modal opens
   useEffect(() => {
@@ -94,6 +108,7 @@ export function NewClassModal({
         notes: "",
       });
       setError(null);
+      setShowAvailability(false);
     }
   }, [isOpen]);
 
@@ -184,7 +199,7 @@ export function NewClassModal({
       />
 
       {/* Modal */}
-      <div className="relative z-10 w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-2xl dark:bg-slate-900">
+      <div className="relative z-10 w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl bg-white shadow-2xl dark:bg-slate-900">
         {/* Header */}
         <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4 dark:border-slate-700 dark:bg-slate-900">
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
@@ -468,6 +483,63 @@ export function NewClassModal({
                 </p>
               )}
             </div>
+
+            {/* Weekly Availability Section */}
+            {(formData.teacherId || formData.studentIds.length > 0) && (
+              <div className="sm:col-span-2">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50">
+                  <button
+                    type="button"
+                    onClick={() => setShowAvailability(!showAvailability)}
+                    className="flex w-full items-center justify-between p-4"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                      <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                        Weekly Availability
+                      </span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        (View common slots & select time)
+                      </span>
+                    </div>
+                    {showAvailability ? (
+                      <ChevronUp className="h-5 w-5 text-slate-400" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-slate-400" />
+                    )}
+                  </button>
+
+                  {showAvailability && (
+                    <div className="border-t border-slate-200 p-4 dark:border-slate-700">
+                      <AvailabilityPicker
+                        teacherId={formData.teacherId || null}
+                        teacherName={teachers.find((t) => t.id === formData.teacherId)?.name || ""}
+                        studentIds={formData.studentIds}
+                        studentNames={Object.fromEntries(
+                          students.map((s) => [s.id, s.name])
+                        )}
+                        teacherAvailability={
+                          formData.teacherId
+                            ? teacherAvailability[formData.teacherId] || []
+                            : []
+                        }
+                        studentAvailability={studentAvailability}
+                        existingClasses={existingClasses}
+                        selectedDay={formData.weekday}
+                        selectedTime={formData.startTime}
+                        onSelect={(day, time) => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            weekday: day,
+                            startTime: time,
+                          }));
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Notes */}
             <div className="sm:col-span-2">

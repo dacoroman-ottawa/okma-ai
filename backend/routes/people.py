@@ -38,7 +38,14 @@ async def get_teachers(
             "specialization": t.specialization,
             "qualification": t.qualification,
             "active": t.active,
-            "instrumentsTaught": [i.id for i in t.instruments]
+            "instrumentsTaught": [i.id for i in t.instruments],
+            "availability": [
+                {
+                    "day": slot.day,
+                    "startTime": slot.start_time,
+                    "endTime": slot.end_time
+                } for slot in t.availability
+            ]
         } for t in teachers
     ]
     
@@ -60,7 +67,14 @@ async def get_teachers(
             "specialization": t.specialization,
             "qualification": t.qualification,
             "active": t.active,
-            "instrumentsTaught": [i.id for i in t.instruments]
+            "instrumentsTaught": [i.id for i in t.instruments],
+            "availability": [
+                {
+                    "day": slot.day,
+                    "startTime": slot.start_time,
+                    "endTime": slot.end_time
+                } for slot in t.availability
+            ]
         } for t in teachers
     ]
 

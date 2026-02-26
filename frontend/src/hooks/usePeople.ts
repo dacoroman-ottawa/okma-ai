@@ -53,8 +53,12 @@ export function usePeople() {
                 });
                 setStudentAvailability(stuAvail);
 
-                // For teachers, the list endpoint currently includes instrumentsTaught
-                // We'll need another fetch for full availability if not in list
+                // Map availability for teachers
+                const tchAvail: Record<string, AvailabilitySlot[]> = {};
+                tchData.forEach((t: any) => {
+                    if (t.availability) tchAvail[t.id] = t.availability;
+                });
+                setTeacherAvailability(tchAvail);
 
                 setLoading(false);
             } catch (error) {

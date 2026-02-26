@@ -25,6 +25,8 @@ export function ClassesView({
     teachers,
     students,
     instruments,
+    teacherAvailability,
+    studentAvailability,
     onCreateClass,
     onViewClass,
     onEditClass,
@@ -161,6 +163,9 @@ export function ClassesView({
                     teachers={teachers}
                     students={students}
                     instruments={instruments}
+                    teacherAvailability={teacherAvailability}
+                    studentAvailability={studentAvailability}
+                    existingClasses={classes}
                     isOpen={isNewClassModalOpen}
                     onClose={() => setIsNewClassModalOpen(false)}
                     onSave={onCreateClass}
