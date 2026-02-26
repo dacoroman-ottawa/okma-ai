@@ -76,15 +76,57 @@ export function useClasses() {
         }
     }
 
+    const createClass = async (data: {
+        teacherId: string
+        instrumentId: string
+        studentIds: string[]
+        type: string
+        weekday: string
+        startTime: string
+        duration: number
+        frequency?: number
+        notes?: string
+    }) => {
+        try {
+            const tokenRes = await fetch("http://localhost:8000/token", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({
+                    username: "admin@kanatamusic.com",
+                    password: "admin123",
+                }),
+            })
+            const { access_token } = await tokenRes.json()
+            const headers = {
+                Authorization: `Bearer ${access_token}`,
+                "Content-Type": "application/json"
+            }
+
+            const res = await fetch("http://localhost:8000/classes/", {
+                method: "POST",
+                headers,
+                body: JSON.stringify(data)
+            })
+
+            if (!res.ok) {
+                throw new Error("Failed to create class")
+            }
+
+            // Refresh data after creating
+            await fetchClasses()
+            return await res.json()
+        } catch (error) {
+            console.error("Create class error:", error)
+            throw error
+        }
+    }
+
     return {
         classes,
         attendanceRecords,
         loading,
         refreshClasses: fetchClasses,
         markAttendance,
-        createClass: async (data: any) => {
-            console.log("Create Class", data)
-            // Implementation for creating class will go here
-        }
+        createClass
     }
 }

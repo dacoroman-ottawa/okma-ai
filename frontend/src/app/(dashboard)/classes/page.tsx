@@ -41,7 +41,7 @@ export default function ClassesPage() {
             teacherAvailability={teacherAvailability}
             studentAvailability={studentAvailability}
             onMarkAttendance={markAttendance}
-            onCreateClass={() => console.log("Create Class triggered")}
+            onCreateClass={createClass}
             onViewClass={(id) => console.log("View Class", id)}
             onEditClass={(id) => console.log("Edit Class", id)}
             onRescheduleClass={(id) => console.log("Reschedule Class", id)}

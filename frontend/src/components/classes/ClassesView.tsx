@@ -1,9 +1,24 @@
 import { useState, useMemo } from 'react'
 import { Plus, Calendar, List } from 'lucide-react'
-import type { ClassesProps } from '@/types/classes'
+import type { ClassesProps, ClassType, Weekday } from '@/types/classes'
 import { ClassesCalendar } from './ClassesCalendar'
 import { ClassesList } from './ClassesList'
 import { ClassesFilterBar } from './ClassesFilterBar'
+import { NewClassModal } from './NewClassModal'
+
+interface ClassesViewProps extends Omit<ClassesProps, 'onCreateClass'> {
+    onCreateClass?: (data: {
+        teacherId: string
+        instrumentId: string
+        studentIds: string[]
+        type: ClassType
+        weekday: Weekday
+        startTime: string
+        duration: number
+        frequency: number
+        notes?: string
+    }) => Promise<void>
+}
 
 export function ClassesView({
     classes,
@@ -15,12 +30,13 @@ export function ClassesView({
     onEditClass,
     onRescheduleClass,
     onCancelClass,
-}: ClassesProps) {
+}: ClassesViewProps) {
     const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar')
     const [selectedTeacher, setSelectedTeacher] = useState<string | null>(null)
     const [selectedStudent, setSelectedStudent] = useState<string | null>(null)
     const [selectedInstrument, setSelectedInstrument] = useState<string | null>(null)
     const [selectedDay, setSelectedDay] = useState<string | null>(null)
+    const [isNewClassModalOpen, setIsNewClassModalOpen] = useState(false)
 
     // Filter classes based on selected filters
     const filteredClasses = useMemo(() => {
@@ -58,7 +74,7 @@ export function ClassesView({
                         </p>
                     </div>
                     <button
-                        onClick={onCreateClass}
+                        onClick={() => setIsNewClassModalOpen(true)}
                         className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md active:scale-[0.98]"
                     >
                         <Plus className="h-4 w-4" />
@@ -138,6 +154,18 @@ export function ClassesView({
                     />
                 )}
             </div>
+
+            {/* New Class Modal */}
+            {onCreateClass && (
+                <NewClassModal
+                    teachers={teachers}
+                    students={students}
+                    instruments={instruments}
+                    isOpen={isNewClassModalOpen}
+                    onClose={() => setIsNewClassModalOpen(false)}
+                    onSave={onCreateClass}
+                />
+            )}
         </div>
     )
 }
