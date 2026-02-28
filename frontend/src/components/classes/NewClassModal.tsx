@@ -27,6 +27,18 @@ interface Instrument {
   name: string;
 }
 
+interface ClassFormData {
+  teacherId: string;
+  instrumentId: string;
+  studentIds: string[];
+  type: ClassType;
+  weekday: Weekday;
+  startTime: string;
+  duration: number;
+  frequency: number;
+  notes?: string;
+}
+
 interface NewClassModalProps {
   teachers: Teacher[];
   students: Student[];
@@ -36,17 +48,10 @@ interface NewClassModalProps {
   existingClasses?: Class[];
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: {
-    teacherId: string;
-    instrumentId: string;
-    studentIds: string[];
-    type: ClassType;
-    weekday: Weekday;
-    startTime: string;
-    duration: number;
-    frequency: number;
-    notes?: string;
-  }) => Promise<void>;
+  onSave: (data: ClassFormData) => Promise<void>;
+  // Edit mode props
+  classToEdit?: Class | null;
+  onUpdate?: (id: string, data: ClassFormData) => Promise<void>;
 }
 
 const WEEKDAYS: Weekday[] = [
@@ -77,7 +82,11 @@ export function NewClassModal({
   isOpen,
   onClose,
   onSave,
+  classToEdit,
+  onUpdate,
 }: NewClassModalProps) {
+  const isEditMode = !!classToEdit;
+
   const [formData, setFormData] = useState({
     teacherId: "",
     instrumentId: "",
@@ -93,24 +102,38 @@ export function NewClassModal({
   const [error, setError] = useState<string | null>(null);
   const [showAvailability, setShowAvailability] = useState(false);
 
-  // Reset form when modal opens
+  // Reset form when modal opens, or populate with edit data
   useEffect(() => {
     if (isOpen) {
-      setFormData({
-        teacherId: "",
-        instrumentId: "",
-        studentIds: [],
-        type: "private",
-        weekday: "Monday",
-        startTime: "09:00",
-        duration: 60,
-        frequency: 1,
-        notes: "",
-      });
+      if (classToEdit) {
+        setFormData({
+          teacherId: classToEdit.teacherId,
+          instrumentId: classToEdit.instrumentId,
+          studentIds: classToEdit.studentIds,
+          type: classToEdit.type,
+          weekday: classToEdit.weekday,
+          startTime: classToEdit.startTime,
+          duration: classToEdit.duration,
+          frequency: classToEdit.frequency || 1,
+          notes: classToEdit.notes || "",
+        });
+      } else {
+        setFormData({
+          teacherId: "",
+          instrumentId: "",
+          studentIds: [],
+          type: "private",
+          weekday: "Monday",
+          startTime: "09:00",
+          duration: 60,
+          frequency: 1,
+          notes: "",
+        });
+      }
       setError(null);
       setShowAvailability(false);
     }
-  }, [isOpen]);
+  }, [isOpen, classToEdit]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,13 +157,19 @@ export function NewClassModal({
     }
 
     try {
-      await onSave({
+      const dataToSave = {
         ...formData,
-        notes: formData.notes || undefined,
-      });
+        notes: formData.notes || null,
+      };
+
+      if (isEditMode && onUpdate && classToEdit) {
+        await onUpdate(classToEdit.id, dataToSave);
+      } else {
+        await onSave(dataToSave);
+      }
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create class");
+      setError(err instanceof Error ? err.message : isEditMode ? "Failed to update class" : "Failed to create class");
     } finally {
       setSaving(false);
     }
@@ -203,7 +232,7 @@ export function NewClassModal({
         {/* Header */}
         <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4 dark:border-slate-700 dark:bg-slate-900">
           <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-            New Class
+            {isEditMode ? "Edit Class" : "New Class"}
           </h2>
           <button
             onClick={onClose}
@@ -572,7 +601,7 @@ export function NewClassModal({
               disabled={saving}
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {saving ? "Creating..." : "Create Class"}
+              {saving ? (isEditMode ? "Updating..." : "Creating...") : (isEditMode ? "Update Class" : "Create Class")}
             </button>
           </div>
         </form>

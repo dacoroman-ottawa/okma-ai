@@ -77,6 +77,60 @@ async def create_class(
     
     return {"id": new_class.id, "status": "created"}
 
+@router.put("/{class_id}")
+async def update_class(
+    class_id: str,
+    class_data: dict,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    cls = db.query(Class).filter(Class.id == class_id).first()
+    if not cls:
+        raise HTTPException(status_code=404, detail="Class not found")
+
+    # Update fields
+    if "teacherId" in class_data:
+        cls.teacher_id = class_data["teacherId"]
+    if "instrumentId" in class_data:
+        cls.instrument_id = class_data["instrumentId"]
+    if "weekday" in class_data:
+        cls.weekday = class_data["weekday"]
+    if "startTime" in class_data:
+        cls.start_time = class_data["startTime"]
+    if "duration" in class_data:
+        cls.duration = class_data["duration"]
+    if "frequency" in class_data:
+        cls.frequency = class_data["frequency"]
+    if "type" in class_data:
+        cls.type = ClassTypeEnum(class_data["type"])
+    if "notes" in class_data:
+        cls.notes = class_data["notes"]
+
+    # Update students
+    if "studentIds" in class_data:
+        students = db.query(Student).filter(Student.id.in_(class_data["studentIds"])).all()
+        cls.students = students
+
+    db.commit()
+    db.refresh(cls)
+
+    return {
+        "id": cls.id,
+        "teacherId": cls.teacher_id,
+        "instrumentId": cls.instrument_id,
+        "studentIds": [s.id for s in cls.students],
+        "type": cls.type.value,
+        "weekday": cls.weekday,
+        "startTime": cls.start_time,
+        "duration": cls.duration,
+        "frequency": cls.frequency,
+        "status": cls.status.value,
+        "notes": cls.notes
+    }
+
 @router.post("/{class_id}/attendance")
 async def mark_attendance(
     class_id: str,

@@ -6,18 +6,21 @@ import { ClassesList } from './ClassesList'
 import { ClassesFilterBar } from './ClassesFilterBar'
 import { NewClassModal } from './NewClassModal'
 
-interface ClassesViewProps extends Omit<ClassesProps, 'onCreateClass'> {
-    onCreateClass?: (data: {
-        teacherId: string
-        instrumentId: string
-        studentIds: string[]
-        type: ClassType
-        weekday: Weekday
-        startTime: string
-        duration: number
-        frequency: number
-        notes?: string
-    }) => Promise<void>
+interface ClassFormData {
+    teacherId: string
+    instrumentId: string
+    studentIds: string[]
+    type: ClassType
+    weekday: Weekday
+    startTime: string
+    duration: number
+    frequency: number
+    notes?: string
+}
+
+interface ClassesViewProps extends Omit<ClassesProps, 'onCreateClass' | 'onEditClass'> {
+    onCreateClass?: (data: ClassFormData) => Promise<void>
+    onUpdateClass?: (id: string, data: ClassFormData) => Promise<void>
 }
 
 export function ClassesView({
@@ -28,8 +31,8 @@ export function ClassesView({
     teacherAvailability,
     studentAvailability,
     onCreateClass,
+    onUpdateClass,
     onViewClass,
-    onEditClass,
     onRescheduleClass,
     onCancelClass,
 }: ClassesViewProps) {
@@ -39,6 +42,19 @@ export function ClassesView({
     const [selectedInstrument, setSelectedInstrument] = useState<string | null>(null)
     const [selectedDay, setSelectedDay] = useState<string | null>(null)
     const [isNewClassModalOpen, setIsNewClassModalOpen] = useState(false)
+    const [classToEdit, setClassToEdit] = useState<typeof classes[0] | null>(null)
+
+    const handleEditClass = (id: string) => {
+        const cls = classes.find(c => c.id === id)
+        if (cls) {
+            setClassToEdit(cls)
+        }
+    }
+
+    const handleCloseModal = () => {
+        setIsNewClassModalOpen(false)
+        setClassToEdit(null)
+    }
 
     // Filter classes based on selected filters
     const filteredClasses = useMemo(() => {
@@ -141,7 +157,7 @@ export function ClassesView({
                         students={students}
                         instruments={instruments}
                         selectedDay={selectedDay}
-                        onViewClass={onViewClass}
+                        onViewClass={handleEditClass}
                     />
                 ) : (
                     <ClassesList
@@ -149,16 +165,16 @@ export function ClassesView({
                         teachers={teachers}
                         students={students}
                         instruments={instruments}
-                        onViewClass={onViewClass}
-                        onEditClass={onEditClass}
+                        onViewClass={handleEditClass}
+                        onEditClass={handleEditClass}
                         onRescheduleClass={onRescheduleClass}
                         onCancelClass={onCancelClass}
                     />
                 )}
             </div>
 
-            {/* New Class Modal */}
-            {onCreateClass && (
+            {/* Class Modal (Create/Edit) */}
+            {(onCreateClass || onUpdateClass) && (
                 <NewClassModal
                     teachers={teachers}
                     students={students}
@@ -166,9 +182,11 @@ export function ClassesView({
                     teacherAvailability={teacherAvailability}
                     studentAvailability={studentAvailability}
                     existingClasses={classes}
-                    isOpen={isNewClassModalOpen}
-                    onClose={() => setIsNewClassModalOpen(false)}
-                    onSave={onCreateClass}
+                    isOpen={isNewClassModalOpen || !!classToEdit}
+                    onClose={handleCloseModal}
+                    onSave={onCreateClass || (async () => {})}
+                    classToEdit={classToEdit}
+                    onUpdate={onUpdateClass}
                 />
             )}
         </div>

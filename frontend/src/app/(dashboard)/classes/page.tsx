@@ -9,7 +9,8 @@ export default function ClassesPage() {
         classes,
         loading: classesLoading,
         markAttendance,
-        createClass
+        createClass,
+        updateClass
     } = useClasses()
 
     const {
@@ -42,8 +43,8 @@ export default function ClassesPage() {
             studentAvailability={studentAvailability}
             onMarkAttendance={markAttendance}
             onCreateClass={createClass}
+            onUpdateClass={updateClass}
             onViewClass={(id) => console.log("View Class", id)}
-            onEditClass={(id) => console.log("Edit Class", id)}
             onRescheduleClass={(id) => console.log("Reschedule Class", id)}
             onCancelClass={(id) => console.log("Cancel Class", id)}
         />
