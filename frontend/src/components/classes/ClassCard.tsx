@@ -29,7 +29,7 @@ export function ClassCard({
     return (
         <div
             onClick={onClick}
-            className={`group cursor-pointer rounded-lg border p-2 text-xs transition-all hover:shadow-md ${isCancelled
+            className={`group h-full cursor-pointer overflow-hidden rounded-lg border p-2 text-xs transition-all hover:shadow-md ${isCancelled
                     ? 'border-red-200 bg-red-50 opacity-60 dark:border-red-900 dark:bg-red-950/30'
                     : isGroup
                         ? 'border-amber-200 bg-amber-50 hover:border-amber-300 dark:border-amber-900 dark:bg-amber-950/30 dark:hover:border-amber-800'
