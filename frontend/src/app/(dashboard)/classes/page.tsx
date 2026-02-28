@@ -7,10 +7,19 @@ import { usePeople } from "@/hooks/usePeople"
 export default function ClassesPage() {
     const {
         classes,
+        attendanceRecords,
         loading: classesLoading,
+        weekStart,
+        weekEnd,
         markAttendance,
         createClass,
-        updateClass
+        updateClass,
+        updateAttendance,
+        createAttendance,
+        generateWeekAttendance,
+        goToPreviousWeek,
+        goToNextWeek,
+        goToCurrentWeek,
     } = useClasses()
 
     const {
@@ -38,7 +47,7 @@ export default function ClassesPage() {
             teachers={teachers}
             students={students}
             instruments={instruments}
-            attendanceRecords={[]} // For now, passing empty or we could merge from useClasses
+            attendanceRecords={attendanceRecords}
             teacherAvailability={teacherAvailability}
             studentAvailability={studentAvailability}
             onMarkAttendance={markAttendance}
@@ -47,6 +56,15 @@ export default function ClassesPage() {
             onViewClass={(id) => console.log("View Class", id)}
             onRescheduleClass={(id) => console.log("Reschedule Class", id)}
             onCancelClass={(id) => console.log("Cancel Class", id)}
+            // Attendance props
+            weekStart={weekStart}
+            weekEnd={weekEnd}
+            onPreviousWeek={goToPreviousWeek}
+            onNextWeek={goToNextWeek}
+            onCurrentWeek={goToCurrentWeek}
+            onUpdateAttendance={updateAttendance}
+            onCreateAttendance={createAttendance}
+            onGenerateWeek={() => generateWeekAttendance(weekStart)}
         />
     )
 }

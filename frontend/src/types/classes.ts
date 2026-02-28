@@ -15,6 +15,8 @@ export type ClassStatus = 'scheduled' | 'cancelled' | 'completed'
 
 export type ClassType = 'private' | 'group'
 
+export type AttendanceStatus = 'scheduled' | 'cancelled' | 'makeup' | 'absent' | 'present'
+
 export interface Class {
     id: string
     teacherId: string
@@ -34,7 +36,9 @@ export interface AttendanceRecord {
     classId: string
     studentId: string
     date: string
-    attended: boolean
+    status: AttendanceStatus
+    time: string | null
+    remarks: string | null
 }
 
 // =============================================================================

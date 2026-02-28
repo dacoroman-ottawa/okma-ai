@@ -72,6 +72,13 @@ class RentalStatusEnum(enum.Enum):
     OVERDUE = "overdue"
     RETURNED = "returned"
 
+class AttendanceStatusEnum(enum.Enum):
+    SCHEDULED = "scheduled"
+    CANCELLED = "cancelled"
+    MAKEUP = "makeup"
+    ABSENT = "absent"
+    PRESENT = "present"
+
 # Association table for Group Classes
 class_students = Table(
     'class_students',
@@ -319,7 +326,9 @@ class AttendanceRecord(Base):
     class_id = Column(String, ForeignKey("classes.id"))
     student_id = Column(String, ForeignKey("students.id"))
     date = Column(Date, nullable=False)
-    attended = Column(Boolean, nullable=False)
+    status = Column(Enum(AttendanceStatusEnum), default=AttendanceStatusEnum.SCHEDULED)
+    time = Column(String, nullable=True)
+    remarks = Column(String, nullable=True)
 
     class_ = relationship("Class")
     student = relationship("Student")

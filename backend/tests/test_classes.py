@@ -7,7 +7,8 @@ from backend.database import get_db, Base
 from backend.models import (
     AppUser, Teacher, Student, Instrument, Enrollment,
     Class, AttendanceRecord, UserRoleEnum, ClassTypeEnum,
-    ClassStatusEnum, TransactionTypeEnum, CreditTransaction
+    ClassStatusEnum, TransactionTypeEnum, CreditTransaction,
+    AttendanceStatusEnum
 )
 from backend.auth import get_current_user
 
@@ -119,28 +120,107 @@ def test_get_classes():
 def test_mark_attendance_deducts_credits():
     # This is the core logic verification
     # 1. Check current balance (should be 0)
-    # 2. Mark attendance for cls-1
+    # 2. Mark attendance for cls-1 with status "present"
     # 3. Check balance (should be -1.0)
-    
+
     payload = {
         "studentId": "stu-1",
         "date": "2025-02-16",
-        "attended": True
+        "status": "present"
     }
-    
+
     # We need to bypass auth for this test or mock current_user
     from backend.auth import get_current_user
     app.dependency_overrides[get_current_user] = lambda: AppUser(id="admin-1", is_admin=True, role=UserRoleEnum.ADMIN)
-    
+
     response = client.post("/classes/cls-1/attendance", json=payload)
     assert response.status_code == 200
-    
+
     db = TestingSessionLocal()
     transactions = db.query(CreditTransaction).filter(CreditTransaction.student_id == "stu-1").all()
     assert len(transactions) == 1
     assert transactions[0].credits == -1.0
     assert transactions[0].type == TransactionTypeEnum.DEDUCTION
     db.close()
+
+def test_mark_attendance_with_legacy_attended_field():
+    # Test backwards compatibility with boolean attended field
+    payload = {
+        "studentId": "stu-1",
+        "date": "2025-02-17",
+        "attended": True
+    }
+
+    from backend.auth import get_current_user
+    app.dependency_overrides[get_current_user] = lambda: AppUser(id="admin-1", is_admin=True, role=UserRoleEnum.ADMIN)
+
+    response = client.post("/classes/cls-1/attendance", json=payload)
+    assert response.status_code == 200
+
+    db = TestingSessionLocal()
+    record = db.query(AttendanceRecord).filter(
+        AttendanceRecord.class_id == "cls-1",
+        AttendanceRecord.student_id == "stu-1"
+    ).first()
+    assert record is not None
+    assert record.status == AttendanceStatusEnum.PRESENT
+    db.close()
+
+def test_generate_week_attendance():
+    from backend.auth import get_current_user
+    app.dependency_overrides[get_current_user] = lambda: AppUser(id="admin-1", is_admin=True, role=UserRoleEnum.ADMIN)
+
+    # Generate attendance for a week starting Monday
+    payload = {"weekStart": "2025-02-10"}
+    response = client.post("/classes/attendance/generate-week", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "created" in data
+    assert data["created"] >= 0
+
+def test_create_standalone_attendance():
+    from backend.auth import get_current_user
+    app.dependency_overrides[get_current_user] = lambda: AppUser(id="admin-1", is_admin=True, role=UserRoleEnum.ADMIN)
+
+    payload = {
+        "classId": "cls-1",
+        "studentId": "stu-1",
+        "date": "2025-02-20",
+        "time": "14:00",
+        "status": "makeup",
+        "remarks": "Make-up class for missed session"
+    }
+    response = client.post("/classes/attendance", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "makeup"
+    assert data["remarks"] == "Make-up class for missed session"
+
+def test_update_attendance():
+    from backend.auth import get_current_user
+    app.dependency_overrides[get_current_user] = lambda: AppUser(id="admin-1", is_admin=True, role=UserRoleEnum.ADMIN)
+
+    # First create a record
+    create_payload = {
+        "classId": "cls-1",
+        "studentId": "stu-1",
+        "date": "2025-02-21",
+        "status": "scheduled"
+    }
+    create_response = client.post("/classes/attendance", json=create_payload)
+    assert create_response.status_code == 200
+    record_id = create_response.json()["id"]
+
+    # Now update it
+    update_payload = {
+        "status": "present",
+        "remarks": "Student arrived on time"
+    }
+    response = client.put(f"/classes/attendance/{record_id}", json=update_payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "present"
+    assert data["remarks"] == "Student arrived on time"
 
 def test_get_all_attendance():
     app.dependency_overrides[get_current_user] = lambda: AppUser(id="admin-1", is_admin=True, role=UserRoleEnum.ADMIN)

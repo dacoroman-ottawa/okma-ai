@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'react'
-import { Plus, Calendar, List } from 'lucide-react'
-import type { ClassesProps, ClassType, Weekday } from '@/types/classes'
+import { Plus, Calendar, List, ClipboardCheck, ChevronLeft, ChevronRight } from 'lucide-react'
+import type { Class, ClassType, Weekday, AttendanceRecord, AttendanceStatus } from '@/types/classes'
 import { ClassesCalendar } from './ClassesCalendar'
 import { ClassesList } from './ClassesList'
 import { ClassesFilterBar } from './ClassesFilterBar'
 import { NewClassModal } from './NewClassModal'
+import { AttendanceListInline } from './AttendanceListInline'
+import { AttendanceModal } from '../attendance/AttendanceModal'
 
 interface ClassFormData {
     teacherId: string
@@ -18,9 +20,31 @@ interface ClassFormData {
     notes?: string
 }
 
-interface ClassesViewProps extends Omit<ClassesProps, 'onCreateClass' | 'onEditClass'> {
+type ViewMode = 'schedule-calendar' | 'schedule-list' | 'attendance-list'
+
+interface ClassesViewProps {
+    classes: Class[]
+    teachers: Array<{ id: string; name: string; instrumentsTaught?: string[] }>
+    students: Array<{ id: string; name: string }>
+    instruments: Array<{ id: string; name: string }>
+    teacherAvailability: Record<string, Array<{ day: Weekday; startTime: string; endTime: string }>>
+    studentAvailability: Record<string, Array<{ day: Weekday; startTime: string; endTime: string }>>
+    onViewClass?: (id: string) => void
+    onRescheduleClass?: (id: string) => void
+    onCancelClass?: (id: string) => void
+    onMarkAttendance?: (classId: string, studentId: string, date: string, attended: boolean) => void
     onCreateClass?: (data: ClassFormData) => Promise<void>
     onUpdateClass?: (id: string, data: ClassFormData) => Promise<void>
+    // Attendance props
+    attendanceRecords?: AttendanceRecord[]
+    weekStart?: Date
+    weekEnd?: Date
+    onPreviousWeek?: () => void
+    onNextWeek?: () => void
+    onCurrentWeek?: () => void
+    onUpdateAttendance?: (recordId: string, data: { date?: string; time?: string; status?: AttendanceStatus; remarks?: string }) => Promise<void>
+    onCreateAttendance?: (data: { classId: string; studentId: string; date: string; time?: string; status?: AttendanceStatus; remarks?: string }) => Promise<void>
+    onGenerateWeek?: () => Promise<void>
 }
 
 export function ClassesView({
@@ -35,14 +59,29 @@ export function ClassesView({
     onViewClass,
     onRescheduleClass,
     onCancelClass,
+    // Attendance props
+    attendanceRecords = [],
+    weekStart = new Date(),
+    weekEnd = new Date(),
+    onPreviousWeek,
+    onNextWeek,
+    onCurrentWeek,
+    onUpdateAttendance,
+    onCreateAttendance,
+    onGenerateWeek,
 }: ClassesViewProps) {
-    const [viewMode, setViewMode] = useState<'calendar' | 'list'>('calendar')
+    const [viewMode, setViewMode] = useState<ViewMode>('schedule-calendar')
     const [selectedTeacher, setSelectedTeacher] = useState<string | null>(null)
     const [selectedStudent, setSelectedStudent] = useState<string | null>(null)
     const [selectedInstrument, setSelectedInstrument] = useState<string | null>(null)
     const [selectedDay, setSelectedDay] = useState<string | null>(null)
+    const [selectedStatus, setSelectedStatus] = useState<AttendanceStatus | null>(null)
     const [isNewClassModalOpen, setIsNewClassModalOpen] = useState(false)
     const [classToEdit, setClassToEdit] = useState<typeof classes[0] | null>(null)
+    const [selectedAttendanceRecord, setSelectedAttendanceRecord] = useState<AttendanceRecord | null>(null)
+    const [isAttendanceModalOpen, setIsAttendanceModalOpen] = useState(false)
+    const [attendanceModalMode, setAttendanceModalMode] = useState<'edit' | 'create'>('edit')
+    const [generating, setGenerating] = useState(false)
 
     const handleEditClass = (id: string) => {
         const cls = classes.find(c => c.id === id)
@@ -75,8 +114,78 @@ export function ClassesView({
         })
     }, [classes, selectedTeacher, selectedStudent, selectedInstrument, selectedDay])
 
+    // Filter attendance records
+    const filteredAttendanceRecords = useMemo(() => {
+        return attendanceRecords.filter((r) => {
+            if (selectedTeacher) {
+                const cls = classes.find((c) => c.id === r.classId)
+                if (cls?.teacherId !== selectedTeacher) return false
+            }
+            if (selectedStudent && r.studentId !== selectedStudent) return false
+            if (selectedStatus && r.status !== selectedStatus) return false
+            return true
+        })
+    }, [attendanceRecords, classes, selectedTeacher, selectedStudent, selectedStatus])
+
     const scheduledCount = classes.filter((c) => c.status === 'scheduled').length
     const groupCount = classes.filter((c) => c.type === 'group').length
+
+    const formatWeekRange = (start: Date, end: Date): string => {
+        const options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' }
+        const startStr = start.toLocaleDateString('en-US', options)
+        const endStr = end.toLocaleDateString('en-US', { ...options, year: 'numeric' })
+        return `${startStr} - ${endStr}`
+    }
+
+    const handleAttendanceRowClick = (record: AttendanceRecord) => {
+        setSelectedAttendanceRecord(record)
+        setAttendanceModalMode('edit')
+        setIsAttendanceModalOpen(true)
+    }
+
+    const handleAddAttendanceEntry = () => {
+        setSelectedAttendanceRecord(null)
+        setAttendanceModalMode('create')
+        setIsAttendanceModalOpen(true)
+    }
+
+    const handleGenerateWeek = async () => {
+        if (!onGenerateWeek) return
+        setGenerating(true)
+        try {
+            await onGenerateWeek()
+        } finally {
+            setGenerating(false)
+        }
+    }
+
+    const handleAttendanceStatusChange = async (recordId: string, status: AttendanceStatus) => {
+        if (onUpdateAttendance) {
+            await onUpdateAttendance(recordId, { status })
+        }
+    }
+
+    const handleAttendanceSave = async (data: { date?: string; time?: string; status?: AttendanceStatus; remarks?: string }) => {
+        if (selectedAttendanceRecord && onUpdateAttendance) {
+            await onUpdateAttendance(selectedAttendanceRecord.id, data)
+        }
+    }
+
+    const handleAttendanceCreate = async (data: { classId: string; studentId: string; date: string; time?: string; status?: AttendanceStatus; remarks?: string }) => {
+        if (onCreateAttendance) {
+            await onCreateAttendance(data)
+        }
+    }
+
+    const clearFilters = () => {
+        setSelectedTeacher(null)
+        setSelectedStudent(null)
+        setSelectedInstrument(null)
+        setSelectedDay(null)
+        setSelectedStatus(null)
+    }
+
+    const isAttendanceView = viewMode === 'attendance-list'
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
@@ -102,55 +211,161 @@ export function ClassesView({
 
                 {/* Toolbar: View toggle + Filters */}
                 <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    {/* View toggle */}
+                    {/* View toggle - all three options on one line */}
                     <div className="flex items-center rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
                         <button
-                            onClick={() => setViewMode('calendar')}
-                            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === 'calendar'
+                            onClick={() => setViewMode('schedule-calendar')}
+                            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === 'schedule-calendar'
                                 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
                                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
                                 }`}
                         >
                             <Calendar className="h-4 w-4" />
-                            Calendar
+                            Schedule Calendar
                         </button>
                         <button
-                            onClick={() => setViewMode('list')}
-                            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === 'list'
+                            onClick={() => setViewMode('schedule-list')}
+                            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === 'schedule-list'
                                 ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
                                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
                                 }`}
                         >
                             <List className="h-4 w-4" />
-                            List
+                            Schedule List
+                        </button>
+                        <button
+                            onClick={() => setViewMode('attendance-list')}
+                            className={`flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${viewMode === 'attendance-list'
+                                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
+                                }`}
+                        >
+                            <ClipboardCheck className="h-4 w-4" />
+                            Attendance List
                         </button>
                     </div>
 
                     {/* Filters */}
-                    <ClassesFilterBar
-                        teachers={teachers}
-                        students={students}
-                        instruments={instruments}
-                        selectedTeacher={selectedTeacher}
-                        selectedStudent={selectedStudent}
-                        selectedInstrument={selectedInstrument}
-                        selectedDay={selectedDay}
-                        onTeacherChange={setSelectedTeacher}
-                        onStudentChange={setSelectedStudent}
-                        onInstrumentChange={setSelectedInstrument}
-                        onDayChange={setSelectedDay}
-                    />
+                    {!isAttendanceView ? (
+                        <ClassesFilterBar
+                            teachers={teachers}
+                            students={students}
+                            instruments={instruments}
+                            selectedTeacher={selectedTeacher}
+                            selectedStudent={selectedStudent}
+                            selectedInstrument={selectedInstrument}
+                            selectedDay={selectedDay}
+                            onTeacherChange={setSelectedTeacher}
+                            onStudentChange={setSelectedStudent}
+                            onInstrumentChange={setSelectedInstrument}
+                            onDayChange={setSelectedDay}
+                        />
+                    ) : (
+                        <div className="flex flex-wrap items-center gap-3">
+                            <select
+                                value={selectedTeacher || ''}
+                                onChange={(e) => setSelectedTeacher(e.target.value || null)}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                            >
+                                <option value="">All Teachers</option>
+                                {teachers.map((t) => (
+                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                ))}
+                            </select>
+                            <select
+                                value={selectedStudent || ''}
+                                onChange={(e) => setSelectedStudent(e.target.value || null)}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                            >
+                                <option value="">All Students</option>
+                                {students.map((s) => (
+                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                ))}
+                            </select>
+                            <select
+                                value={selectedStatus || ''}
+                                onChange={(e) => setSelectedStatus((e.target.value as AttendanceStatus) || null)}
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
+                            >
+                                <option value="">All Statuses</option>
+                                <option value="scheduled">Scheduled</option>
+                                <option value="present">Present</option>
+                                <option value="absent">Absent</option>
+                                <option value="cancelled">Cancelled</option>
+                                <option value="makeup">Make-up</option>
+                            </select>
+                            {(selectedTeacher || selectedStudent || selectedStatus) && (
+                                <button
+                                    onClick={clearFilters}
+                                    className="rounded-lg px-3 py-2 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                                >
+                                    Clear
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
 
+                {/* Week Navigation for Attendance */}
+                {isAttendanceView && (
+                    <div className="mb-6 flex items-center justify-between rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+                        <button
+                            onClick={onPreviousWeek}
+                            className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                            Previous
+                        </button>
+                        <div className="text-center">
+                            <p className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                                {formatWeekRange(weekStart, weekEnd)}
+                            </p>
+                            <button
+                                onClick={onCurrentWeek}
+                                className="text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+                            >
+                                Today
+                            </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handleGenerateWeek}
+                                disabled={generating}
+                                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                            >
+                                {generating ? 'Generating...' : 'Generate Week'}
+                            </button>
+                            <button
+                                onClick={handleAddAttendanceEntry}
+                                className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                            >
+                                <Plus className="h-4 w-4" />
+                            </button>
+                            <button
+                                onClick={onNextWeek}
+                                className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                            >
+                                Next
+                                <ChevronRight className="h-4 w-4" />
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Results count when filtered */}
-                {(selectedTeacher || selectedStudent || selectedInstrument || selectedDay) && (
+                {!isAttendanceView && (selectedTeacher || selectedStudent || selectedInstrument || selectedDay) && (
                     <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
                         Showing {filteredClasses.length} of {classes.length} classes
                     </p>
                 )}
+                {isAttendanceView && (selectedTeacher || selectedStudent || selectedStatus) && (
+                    <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+                        Showing {filteredAttendanceRecords.length} of {attendanceRecords.length} records
+                    </p>
+                )}
 
                 {/* View content */}
-                {viewMode === 'calendar' ? (
+                {viewMode === 'schedule-calendar' && (
                     <ClassesCalendar
                         classes={filteredClasses}
                         teachers={teachers}
@@ -159,7 +374,8 @@ export function ClassesView({
                         selectedDay={selectedDay}
                         onViewClass={handleEditClass}
                     />
-                ) : (
+                )}
+                {viewMode === 'schedule-list' && (
                     <ClassesList
                         classes={filteredClasses}
                         teachers={teachers}
@@ -169,6 +385,17 @@ export function ClassesView({
                         onEditClass={handleEditClass}
                         onRescheduleClass={onRescheduleClass}
                         onCancelClass={onCancelClass}
+                    />
+                )}
+                {viewMode === 'attendance-list' && (
+                    <AttendanceListInline
+                        records={filteredAttendanceRecords}
+                        classes={classes}
+                        teachers={teachers}
+                        students={students}
+                        instruments={instruments}
+                        onStatusChange={handleAttendanceStatusChange}
+                        onRowClick={handleAttendanceRowClick}
                     />
                 )}
             </div>
@@ -189,6 +416,20 @@ export function ClassesView({
                     onUpdate={onUpdateClass}
                 />
             )}
+
+            {/* Attendance Modal */}
+            <AttendanceModal
+                isOpen={isAttendanceModalOpen}
+                record={selectedAttendanceRecord}
+                classes={classes}
+                teachers={teachers}
+                students={students}
+                instruments={instruments}
+                mode={attendanceModalMode}
+                onClose={() => setIsAttendanceModalOpen(false)}
+                onSave={handleAttendanceSave}
+                onCreate={handleAttendanceCreate}
+            />
         </div>
     )
 }
