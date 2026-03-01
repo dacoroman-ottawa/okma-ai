@@ -90,9 +90,11 @@ export function AttendanceListInline({
 
             {/* Table body */}
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {sortedRecords.map((record) => {
+                {sortedRecords.map((record, index) => {
                     const classInfo = getClassInfo(record.classId)
                     const isCancelled = record.status === 'cancelled'
+                    // Open dropdown downward for first 2 items, upward for the rest
+                    const openDownward = index < 2
 
                     return (
                         <div
@@ -182,7 +184,7 @@ export function AttendanceListInline({
                                                     setOpenMenu(null)
                                                 }}
                                             />
-                                            <div className="absolute bottom-full right-0 z-20 mb-1 w-32 rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                                            <div className={`absolute right-0 z-20 w-32 rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900 ${openDownward ? 'top-full mt-1' : 'bottom-full mb-1'}`}>
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation()
