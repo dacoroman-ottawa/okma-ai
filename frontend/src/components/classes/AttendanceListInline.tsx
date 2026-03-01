@@ -150,8 +150,8 @@ export function AttendanceListInline({
 
                             {/* Credits */}
                             <div className="col-span-1">
-                                <span className={`text-sm font-medium ${record.credits < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>
-                                    {record.credits}
+                                <span className={`text-sm font-medium ${(record.credits ?? 0) < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                                    {record.credits ?? 0}
                                 </span>
                             </div>
 

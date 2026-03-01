@@ -36,7 +36,7 @@ export interface AttendanceRecord {
     status: AttendanceStatus
     time: string | null
     remarks: string | null
-    credits: number
+    credits?: number
 }
 
 // =============================================================================
