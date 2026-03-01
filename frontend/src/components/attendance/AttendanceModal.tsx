@@ -225,21 +225,31 @@ export function AttendanceModal({
                         </div>
                     </div>
 
-                    <div>
-                        <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                            Status
-                        </label>
-                        <select
-                            value={status}
-                            onChange={(e) => setStatus(e.target.value as AttendanceStatus)}
-                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                        >
-                            {STATUS_OPTIONS.map((s) => (
-                                <option key={s.value} value={s.value}>
-                                    {s.label}
-                                </option>
-                            ))}
-                        </select>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                                Status
+                            </label>
+                            <select
+                                value={status}
+                                onChange={(e) => setStatus(e.target.value as AttendanceStatus)}
+                                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                            >
+                                {STATUS_OPTIONS.map((s) => (
+                                    <option key={s.value} value={s.value}>
+                                        {s.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                                Credits
+                            </label>
+                            <div className={`rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-800 ${status === 'present' ? 'text-red-600 dark:text-red-400 font-medium' : 'text-slate-500 dark:text-slate-400'}`}>
+                                {status === 'present' ? -1 : 0}
+                            </div>
+                        </div>
                     </div>
 
                     <div>

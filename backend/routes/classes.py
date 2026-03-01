@@ -14,6 +14,11 @@ from ..auth import get_current_user
 
 router = APIRouter(prefix="/classes", tags=["classes"])
 
+
+def get_credits_for_status(status: AttendanceStatusEnum) -> int:
+    """Return credits based on attendance status: -1 for present, 0 for all others."""
+    return -1 if status == AttendanceStatusEnum.PRESENT else 0
+
 @router.get("/")
 async def get_classes(
     db: Session = Depends(get_db),
@@ -173,6 +178,7 @@ async def mark_attendance(
     if existing:
         was_present = existing.status == AttendanceStatusEnum.PRESENT
         existing.status = status
+        existing.credits = get_credits_for_status(status)
         if time_str is not None:
             existing.time = time_str
         if remarks is not None:
@@ -185,7 +191,8 @@ async def mark_attendance(
             date=record_date,
             status=status,
             time=time_str or cls.start_time,
-            remarks=remarks
+            remarks=remarks,
+            credits=get_credits_for_status(status)
         )
         db.add(new_record)
 
@@ -247,7 +254,8 @@ async def get_all_attendance(
             "date": r.date.isoformat(),
             "status": r.status.value if r.status else "scheduled",
             "time": r.time,
-            "remarks": r.remarks
+            "remarks": r.remarks,
+            "credits": r.credits if r.credits is not None else 0
         } for r in records
     ]
 
@@ -299,7 +307,8 @@ async def generate_week_attendance(
                     student_id=student.id,
                     date=class_date,
                     status=AttendanceStatusEnum.SCHEDULED,
-                    time=cls.start_time
+                    time=cls.start_time,
+                    credits=0
                 )
                 db.add(new_record)
                 created_count += 1
@@ -349,7 +358,8 @@ async def create_attendance(
         date=record_date,
         status=status,
         time=time_str or cls.start_time,
-        remarks=remarks
+        remarks=remarks,
+        credits=get_credits_for_status(status)
     )
     db.add(new_record)
 
@@ -383,7 +393,8 @@ async def create_attendance(
         "date": new_record.date.isoformat(),
         "status": new_record.status.value,
         "time": new_record.time,
-        "remarks": new_record.remarks
+        "remarks": new_record.remarks,
+        "credits": new_record.credits
     }
 
 
@@ -415,6 +426,7 @@ async def update_attendance(
         record.time = data["time"]
     if "status" in data:
         record.status = AttendanceStatusEnum(data["status"])
+        record.credits = get_credits_for_status(record.status)
     if "remarks" in data:
         record.remarks = data["remarks"]
 
@@ -448,5 +460,6 @@ async def update_attendance(
         "date": record.date.isoformat(),
         "status": record.status.value,
         "time": record.time,
-        "remarks": record.remarks
+        "remarks": record.remarks,
+        "credits": record.credits
     }

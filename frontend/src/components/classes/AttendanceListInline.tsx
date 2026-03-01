@@ -81,7 +81,8 @@ export function AttendanceListInline({
                 <div className="col-span-2">Instrument</div>
                 <div className="col-span-2">Teacher</div>
                 <div className="col-span-2">Student</div>
-                <div className="col-span-2">Status</div>
+                <div className="col-span-1">Status</div>
+                <div className="col-span-1">Credits</div>
                 <div className="col-span-2">Remarks</div>
             </div>
 
@@ -133,7 +134,7 @@ export function AttendanceListInline({
                             </div>
 
                             {/* Status */}
-                            <div className="col-span-2" onClick={(e) => e.stopPropagation()}>
+                            <div className="col-span-1" onClick={(e) => e.stopPropagation()}>
                                 <select
                                     value={record.status}
                                     onChange={(e) => onStatusChange(record.id, e.target.value as AttendanceStatus)}
@@ -145,6 +146,13 @@ export function AttendanceListInline({
                                         </option>
                                     ))}
                                 </select>
+                            </div>
+
+                            {/* Credits */}
+                            <div className="col-span-1">
+                                <span className={`text-sm font-medium ${record.credits < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                                    {record.credits}
+                                </span>
                             </div>
 
                             {/* Remarks */}
