@@ -180,7 +180,7 @@ export function AttendanceListInline({
                                                     setOpenMenu(null)
                                                 }}
                                             />
-                                            <div className="absolute right-0 z-20 mt-1 w-32 rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                                            <div className="absolute bottom-full right-0 z-20 mb-1 w-32 rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation()
