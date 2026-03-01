@@ -4,6 +4,7 @@ import type { Class, ClassType, Weekday, AttendanceRecord, AttendanceStatus } fr
 import { ClassesCalendar } from './ClassesCalendar'
 import { ClassesList } from './ClassesList'
 import { ClassesFilterBar } from './ClassesFilterBar'
+import { AttendanceFilterBar } from './AttendanceFilterBar'
 import { NewClassModal } from './NewClassModal'
 import { AttendanceListInline } from './AttendanceListInline'
 import { AttendanceModal } from '../attendance/AttendanceModal'
@@ -127,7 +128,7 @@ export function ClassesView({
         })
     }, [attendanceRecords, classes, selectedTeacher, selectedStudent, selectedStatus])
 
-    const scheduledCount = classes.filter((c) => c.status === 'scheduled').length
+    const totalCount = classes.length
     const groupCount = classes.filter((c) => c.type === 'group').length
 
     const formatWeekRange = (start: Date, end: Date): string => {
@@ -177,38 +178,11 @@ export function ClassesView({
         }
     }
 
-    const clearFilters = () => {
-        setSelectedTeacher(null)
-        setSelectedStudent(null)
-        setSelectedInstrument(null)
-        setSelectedDay(null)
-        setSelectedStatus(null)
-    }
-
     const isAttendanceView = viewMode === 'attendance-list'
 
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
             <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-                {/* Header */}
-                <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                            Classes
-                        </h1>
-                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                            {scheduledCount} scheduled classes, {groupCount} group classes
-                        </p>
-                    </div>
-                    <button
-                        onClick={() => setIsNewClassModalOpen(true)}
-                        className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md active:scale-[0.98]"
-                    >
-                        <Plus className="h-4 w-4" />
-                        New Class
-                    </button>
-                </div>
-
                 {/* Toolbar: View toggle + Filters */}
                 <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     {/* View toggle - all three options on one line */}
@@ -261,49 +235,36 @@ export function ClassesView({
                             onDayChange={setSelectedDay}
                         />
                     ) : (
-                        <div className="flex flex-wrap items-center gap-3">
-                            <select
-                                value={selectedTeacher || ''}
-                                onChange={(e) => setSelectedTeacher(e.target.value || null)}
-                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                            >
-                                <option value="">All Teachers</option>
-                                {teachers.map((t) => (
-                                    <option key={t.id} value={t.id}>{t.name}</option>
-                                ))}
-                            </select>
-                            <select
-                                value={selectedStudent || ''}
-                                onChange={(e) => setSelectedStudent(e.target.value || null)}
-                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                            >
-                                <option value="">All Students</option>
-                                {students.map((s) => (
-                                    <option key={s.id} value={s.id}>{s.name}</option>
-                                ))}
-                            </select>
-                            <select
-                                value={selectedStatus || ''}
-                                onChange={(e) => setSelectedStatus((e.target.value as AttendanceStatus) || null)}
-                                className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300"
-                            >
-                                <option value="">All Statuses</option>
-                                <option value="scheduled">Scheduled</option>
-                                <option value="present">Present</option>
-                                <option value="absent">Absent</option>
-                                <option value="cancelled">Cancelled</option>
-                                <option value="makeup">Make-up</option>
-                            </select>
-                            {(selectedTeacher || selectedStudent || selectedStatus) && (
-                                <button
-                                    onClick={clearFilters}
-                                    className="rounded-lg px-3 py-2 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-300"
-                                >
-                                    Clear
-                                </button>
-                            )}
-                        </div>
+                        <AttendanceFilterBar
+                            teachers={teachers}
+                            students={students}
+                            selectedTeacher={selectedTeacher}
+                            selectedStudent={selectedStudent}
+                            selectedStatus={selectedStatus}
+                            onTeacherChange={setSelectedTeacher}
+                            onStudentChange={setSelectedStudent}
+                            onStatusChange={setSelectedStatus}
+                        />
                     )}
+                </div>
+
+                {/* Header */}
+                <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                            Classes
+                        </h1>
+                        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                            {totalCount} classes, {groupCount} group classes
+                        </p>
+                    </div>
+                    <button
+                        onClick={() => setIsNewClassModalOpen(true)}
+                        className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md active:scale-[0.98]"
+                    >
+                        <Plus className="h-4 w-4" />
+                        New Class
+                    </button>
                 </div>
 
                 {/* Week Navigation for Attendance */}

@@ -7,7 +7,7 @@ import uuid
 from ..database import get_db
 from ..models import (
     Class, AttendanceRecord, Student, Teacher, Instrument, Enrollment,
-    ClassTypeEnum, ClassStatusEnum, CreditTransaction, TransactionTypeEnum,
+    ClassTypeEnum, CreditTransaction, TransactionTypeEnum,
     AttendanceStatusEnum
 )
 from ..auth import get_current_user
@@ -40,7 +40,6 @@ async def get_classes(
             "startTime": c.start_time,
             "duration": c.duration,
             "frequency": c.frequency,
-            "status": c.status.value,
             "notes": c.notes
         } for c in classes
     ]
@@ -63,8 +62,7 @@ async def create_class(
         duration=class_data["duration"],
         frequency=class_data.get("frequency", 1),
         type=ClassTypeEnum(class_data["type"]),
-        notes=class_data.get("notes"),
-        status=ClassStatusEnum.SCHEDULED
+        notes=class_data.get("notes")
     )
     
     # Add students
@@ -128,7 +126,6 @@ async def update_class(
         "startTime": cls.start_time,
         "duration": cls.duration,
         "frequency": cls.frequency,
-        "status": cls.status.value,
         "notes": cls.notes
     }
 
@@ -274,8 +271,8 @@ async def generate_week_attendance(
         "Friday": 4, "Saturday": 5, "Sunday": 6
     }
 
-    # Get all scheduled classes
-    classes = db.query(Class).filter(Class.status == ClassStatusEnum.SCHEDULED).all()
+    # Get all classes
+    classes = db.query(Class).all()
     created_count = 0
 
     for cls in classes:

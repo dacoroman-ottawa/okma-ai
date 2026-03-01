@@ -9,7 +9,7 @@ from ..database import get_db
 from ..models import (
     Class, Student, Teacher, Instrument, Enrollment,
     Product, Rental, CreditTransaction,
-    ClassStatusEnum, EnrollmentStatusEnum, RentalStatusEnum, TransactionTypeEnum
+    EnrollmentStatusEnum, RentalStatusEnum, TransactionTypeEnum
 )
 from ..auth import get_current_user
 
@@ -42,10 +42,9 @@ async def get_dashboard_summary(
     # Metrics
     # ==========================================================================
 
-    # Classes today - count classes scheduled for today's weekday
+    # Classes today - count classes for today's weekday
     classes_today = db.query(Class).filter(
-        Class.weekday == today_weekday,
-        Class.status == ClassStatusEnum.SCHEDULED
+        Class.weekday == today_weekday
     ).count()
 
     # Students enrolled - count active enrollments (unique students)
@@ -69,8 +68,7 @@ async def get_dashboard_summary(
     # ==========================================================================
 
     todays_classes_query = db.query(Class).filter(
-        Class.weekday == today_weekday,
-        Class.status == ClassStatusEnum.SCHEDULED
+        Class.weekday == today_weekday
     ).all()
 
     todays_classes = []
@@ -102,8 +100,7 @@ async def get_dashboard_summary(
         future_weekday = WEEKDAY_MAP[future_date.weekday()]
 
         classes_on_day = db.query(Class).filter(
-            Class.weekday == future_weekday,
-            Class.status == ClassStatusEnum.SCHEDULED
+            Class.weekday == future_weekday
         ).all()
 
         for cls in classes_on_day:

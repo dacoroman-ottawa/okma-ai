@@ -16,7 +16,6 @@ interface ClassData {
   weekday: string;
   startTime: string;
   duration: number;
-  status: string;
 }
 
 interface AvailabilityPickerProps {
@@ -133,7 +132,6 @@ export function AvailabilityPicker({
   const bookedCells = useMemo(() => {
     const cells = new Set<string>();
     existingClasses
-      .filter((cls) => cls.status === "scheduled")
       .filter((cls) => {
         // Check if this class involves the selected teacher or any selected student
         if (teacherId && cls.teacherId === teacherId) return true;

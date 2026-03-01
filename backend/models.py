@@ -30,11 +30,6 @@ class ClassTypeEnum(enum.Enum):
     PRIVATE = "private"
     GROUP = "group"
 
-class ClassStatusEnum(enum.Enum):
-    SCHEDULED = "scheduled"
-    COMPLETED = "completed"
-    CANCELLED = "cancelled"
-
 class EnrollmentStatusEnum(enum.Enum):
     ACTIVE = "active"
     COMPLETED = "completed"
@@ -171,7 +166,6 @@ class Class(Base):
     type = Column(Enum(ClassTypeEnum))
     frequency = Column(Integer, default=1)
     notes = Column(String)
-    status = Column(Enum(ClassStatusEnum), default=ClassStatusEnum.SCHEDULED)
 
     teacher = relationship("Teacher", back_populates="classes")
     students = relationship("Student", secondary=class_students, back_populates="classes")

@@ -4,9 +4,9 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from .database import SessionLocal, init_db, engine
 from .models import (
-    Base, AppUser, Teacher, Student, Instrument, UserRoleEnum, 
-    QualificationEnum, SkillLevelEnum, SkillLevel, AvailabilitySlot, 
-    Enrollment, Class, AttendanceRecord, ClassTypeEnum, ClassStatusEnum
+    Base, AppUser, Teacher, Student, Instrument, UserRoleEnum,
+    QualificationEnum, SkillLevelEnum, SkillLevel, AvailabilitySlot,
+    Enrollment, Class, AttendanceRecord, ClassTypeEnum
 )
 
 def seed_data():
@@ -159,8 +159,7 @@ def seed_data():
             duration=cls["duration"],
             frequency=cls["frequency"],
             type=ClassTypeEnum(cls["type"]),
-            status=ClassStatusEnum(cls["status"]),
-            notes=cls["notes"]
+            notes=cls.get("notes")
         )
         # Add students
         for sid in cls["studentIds"]:

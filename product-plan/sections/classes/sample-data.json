@@ -23,8 +23,7 @@
       "startTime": "16:00",
       "duration": 45,
       "frequency": 1,
-      "status": "scheduled",
-      "notes": null
+            "notes": null
     },
     {
       "id": "cls-002",
@@ -36,8 +35,7 @@
       "startTime": "17:00",
       "duration": 60,
       "frequency": 2,
-      "status": "scheduled",
-      "notes": "Advanced student - working on fingerpicking techniques"
+            "notes": "Advanced student - working on fingerpicking techniques"
     },
     {
       "id": "cls-003",
@@ -49,8 +47,7 @@
       "startTime": "18:00",
       "duration": 60,
       "frequency": 1,
-      "status": "scheduled",
-      "notes": "Beginner vocal group - focusing on breathing exercises"
+            "notes": "Beginner vocal group - focusing on breathing exercises"
     },
     {
       "id": "cls-004",
@@ -62,8 +59,7 @@
       "startTime": "15:30",
       "duration": 30,
       "frequency": 1,
-      "status": "scheduled",
-      "notes": null
+            "notes": null
     },
     {
       "id": "cls-005",
@@ -75,8 +71,7 @@
       "startTime": "18:00",
       "duration": 45,
       "frequency": 2,
-      "status": "scheduled",
-      "notes": "Working on jazz drumming patterns"
+            "notes": "Working on jazz drumming patterns"
     },
     {
       "id": "cls-006",
@@ -88,8 +83,7 @@
       "startTime": "09:30",
       "duration": 60,
       "frequency": 1,
-      "status": "scheduled",
-      "notes": "Intermediate piano group - duet practice"
+            "notes": "Intermediate piano group - duet practice"
     },
     {
       "id": "cls-007",
@@ -101,8 +95,7 @@
       "startTime": "14:00",
       "duration": 45,
       "frequency": 1,
-      "status": "scheduled",
-      "notes": null
+            "notes": null
     },
     {
       "id": "cls-008",
@@ -114,8 +107,7 @@
       "startTime": "10:00",
       "duration": 30,
       "frequency": 1,
-      "status": "cancelled",
-      "notes": "Student requested cancellation - vacation"
+            "notes": "Student requested cancellation - vacation"
     },
     {
       "id": "cls-009",
@@ -127,8 +119,7 @@
       "startTime": "11:00",
       "duration": 60,
       "frequency": 1,
-      "status": "scheduled",
-      "notes": "Weekend makeup session"
+            "notes": "Weekend makeup session"
     },
     {
       "id": "cls-010",
@@ -140,8 +131,7 @@
       "startTime": "16:00",
       "duration": 30,
       "frequency": 1,
-      "status": "scheduled",
-      "notes": "Beginner - learning basic scales"
+            "notes": "Beginner - learning basic scales"
     }
   ],
   "attendanceRecords": [

@@ -1,4 +1,4 @@
-import { Clock, Music, User, Users, MoreVertical, Edit, Calendar, XCircle } from 'lucide-react'
+import { Clock, Music, User, Users, MoreVertical, Edit, Calendar } from 'lucide-react'
 import { useState } from 'react'
 import type { Class } from '@/types/classes'
 
@@ -64,7 +64,6 @@ export function ClassesList({
             {/* Table body */}
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {sortedClasses.map((classItem) => {
-                    const isCancelled = classItem.status === 'cancelled'
                     const isGroup = classItem.type === 'group'
                     const studentNames = getStudentNames(classItem.studentIds)
 
@@ -72,8 +71,7 @@ export function ClassesList({
                         <div
                             key={classItem.id}
                             onClick={() => onViewClass?.(classItem.id)}
-                            className={`grid cursor-pointer grid-cols-1 gap-2 px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 sm:grid-cols-12 sm:gap-4 sm:items-center ${isCancelled ? 'opacity-50' : ''
-                                }`}
+                            className="grid cursor-pointer grid-cols-1 gap-2 px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 sm:grid-cols-12 sm:gap-4 sm:items-center"
                         >
                             {/* Day / Time */}
                             <div className="col-span-2">
@@ -120,14 +118,12 @@ export function ClassesList({
                             {/* Type / Duration */}
                             <div className="col-span-2 flex items-center gap-2">
                                 <span
-                                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${isCancelled
-                                            ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400'
-                                            : isGroup
-                                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
-                                                : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-400'
+                                    className={`rounded-full px-2 py-0.5 text-xs font-medium ${isGroup
+                                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400'
+                                            : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-400'
                                         }`}
                                 >
-                                    {isCancelled ? 'Cancelled' : isGroup ? 'Group' : 'Private'}
+                                    {isGroup ? 'Group' : 'Private'}
                                 </span>
                                 <span className="flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
                                     <Clock className="h-3 w-3" />
@@ -180,19 +176,6 @@ export function ClassesList({
                                                     <Calendar className="h-4 w-4" />
                                                     Reschedule
                                                 </button>
-                                                {!isCancelled && (
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation()
-                                                            onCancelClass?.(classItem.id)
-                                                            setOpenMenu(null)
-                                                        }}
-                                                        className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
-                                                    >
-                                                        <XCircle className="h-4 w-4" />
-                                                        Cancel
-                                                    </button>
-                                                )}
                                             </div>
                                         </>
                                     )}

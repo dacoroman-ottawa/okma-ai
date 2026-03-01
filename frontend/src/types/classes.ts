@@ -11,8 +11,6 @@ export type Duration = 30 | 45 | 60
 
 export type Frequency = 1 | 2
 
-export type ClassStatus = 'scheduled' | 'cancelled' | 'completed'
-
 export type ClassType = 'private' | 'group'
 
 export type AttendanceStatus = 'scheduled' | 'cancelled' | 'makeup' | 'absent' | 'present'
@@ -27,7 +25,6 @@ export interface Class {
     startTime: string
     duration: number
     frequency: number
-    status: ClassStatus
     notes: string | null
 }
 

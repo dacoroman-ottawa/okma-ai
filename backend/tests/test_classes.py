@@ -7,7 +7,7 @@ from backend.database import get_db, Base
 from backend.models import (
     AppUser, Teacher, Student, Instrument, Enrollment,
     Class, AttendanceRecord, UserRoleEnum, ClassTypeEnum,
-    ClassStatusEnum, TransactionTypeEnum, CreditTransaction,
+    TransactionTypeEnum, CreditTransaction,
     AttendanceStatusEnum
 )
 from backend.auth import get_current_user
@@ -98,8 +98,7 @@ def setup_db():
         weekday="Monday",
         start_time="10:00",
         duration=60,
-        type=ClassTypeEnum.PRIVATE,
-        status=ClassStatusEnum.SCHEDULED
+        type=ClassTypeEnum.PRIVATE
     )
     test_class.students.append(student)
     db.add(test_class)
