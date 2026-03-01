@@ -16,6 +16,7 @@ export default function ClassesPage() {
         updateClass,
         updateAttendance,
         createAttendance,
+        deleteAttendance,
         generateWeekAttendance,
         goToPreviousWeek,
         goToNextWeek,
@@ -64,6 +65,7 @@ export default function ClassesPage() {
             onCurrentWeek={goToCurrentWeek}
             onUpdateAttendance={updateAttendance}
             onCreateAttendance={createAttendance}
+            onDeleteAttendance={deleteAttendance}
             onGenerateWeek={() => generateWeekAttendance(weekStart)}
         />
     )

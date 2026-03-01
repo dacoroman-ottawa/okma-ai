@@ -172,6 +172,27 @@ export function useClasses() {
         }
     }
 
+    const deleteAttendance = async (attendanceId: string) => {
+        try {
+            const headers = await getAuthHeaders()
+            const res = await fetch(`http://localhost:8000/classes/attendance/${attendanceId}`, {
+                method: "DELETE",
+                headers,
+            })
+
+            if (!res.ok) {
+                const error = await res.json()
+                throw new Error(error.detail || "Failed to delete attendance")
+            }
+
+            await fetchWeekAttendance(weekStart, weekEnd)
+            return await res.json()
+        } catch (error) {
+            console.error("Delete attendance error:", error)
+            throw error
+        }
+    }
+
     const generateWeekAttendance = async (weekStartDate: Date) => {
         try {
             const headers = await getAuthHeaders()
@@ -314,6 +335,7 @@ export function useClasses() {
         markAttendance,
         updateAttendance,
         createAttendance,
+        deleteAttendance,
         generateWeekAttendance,
         setWeek,
         goToPreviousWeek,

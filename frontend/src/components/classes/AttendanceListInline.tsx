@@ -1,6 +1,6 @@
 'use client'
 
-import { Music, User, Users, MoreVertical, Edit } from 'lucide-react'
+import { Music, User, Users, MoreVertical, Edit, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import type { AttendanceRecord, AttendanceStatus, Class } from '@/types/classes'
 
@@ -12,6 +12,7 @@ interface AttendanceListInlineProps {
     instruments: Array<{ id: string; name: string }>
     onStatusChange: (recordId: string, status: AttendanceStatus) => void
     onRowClick: (record: AttendanceRecord) => void
+    onDelete?: (recordId: string) => void
 }
 
 const STATUS_OPTIONS: { value: AttendanceStatus; label: string; color: string }[] = [
@@ -47,6 +48,7 @@ export function AttendanceListInline({
     instruments,
     onStatusChange,
     onRowClick,
+    onDelete,
 }: AttendanceListInlineProps) {
     const [openMenu, setOpenMenu] = useState<string | null>(null)
 
@@ -191,6 +193,19 @@ export function AttendanceListInline({
                                                 >
                                                     <Edit className="h-4 w-4" />
                                                     Edit
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        if (onDelete) {
+                                                            onDelete(record.id)
+                                                        }
+                                                        setOpenMenu(null)
+                                                    }}
+                                                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                    Delete
                                                 </button>
                                             </div>
                                         </>

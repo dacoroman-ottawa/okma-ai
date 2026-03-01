@@ -45,6 +45,7 @@ interface ClassesViewProps {
     onCurrentWeek?: () => void
     onUpdateAttendance?: (recordId: string, data: { date?: string; time?: string; status?: AttendanceStatus; remarks?: string }) => Promise<void>
     onCreateAttendance?: (data: { classId: string; studentId: string; date: string; time?: string; status?: AttendanceStatus; remarks?: string }) => Promise<void>
+    onDeleteAttendance?: (recordId: string) => Promise<void>
     onGenerateWeek?: () => Promise<void>
 }
 
@@ -69,6 +70,7 @@ export function ClassesView({
     onCurrentWeek,
     onUpdateAttendance,
     onCreateAttendance,
+    onDeleteAttendance,
     onGenerateWeek,
 }: ClassesViewProps) {
     const [viewMode, setViewMode] = useState<ViewMode>('schedule-calendar')
@@ -357,6 +359,7 @@ export function ClassesView({
                         instruments={instruments}
                         onStatusChange={handleAttendanceStatusChange}
                         onRowClick={handleAttendanceRowClick}
+                        onDelete={onDeleteAttendance}
                     />
                 )}
             </div>

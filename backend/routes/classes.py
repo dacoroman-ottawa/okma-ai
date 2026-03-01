@@ -463,3 +463,27 @@ async def update_attendance(
         "remarks": record.remarks,
         "credits": record.credits
     }
+
+
+@router.delete("/attendance/{attendance_id}")
+async def delete_attendance(
+    attendance_id: str,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """Delete a single attendance record by ID."""
+    record = db.query(AttendanceRecord).filter(AttendanceRecord.id == attendance_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Attendance record not found")
+
+    cls = db.query(Class).filter(Class.id == record.class_id).first()
+
+    # RBAC: Admin or the teacher of this class
+    if not current_user.is_admin:
+        if not current_user.teacher or current_user.teacher.id != cls.teacher_id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+    db.delete(record)
+    db.commit()
+
+    return {"status": "deleted", "id": attendance_id}
