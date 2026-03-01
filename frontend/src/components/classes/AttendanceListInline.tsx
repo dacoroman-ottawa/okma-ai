@@ -84,7 +84,7 @@ export function AttendanceListInline({
                 <div className="col-span-2">Teacher</div>
                 <div className="col-span-2">Student</div>
                 <div className="col-span-1">Status</div>
-                <div className="col-span-1">Credits</div>
+                <div className="col-span-1 text-center">Credits</div>
                 <div className="col-span-2">Remarks</div>
             </div>
 
@@ -153,7 +153,7 @@ export function AttendanceListInline({
                             </div>
 
                             {/* Credits */}
-                            <div className="col-span-1">
+                            <div className="col-span-1 text-center">
                                 <span className={`text-sm font-medium ${(record.credits ?? 0) < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>
                                     {record.credits ?? 0}
                                 </span>
