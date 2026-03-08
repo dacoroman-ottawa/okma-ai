@@ -52,3 +52,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
+
+# test databases
+*.db
