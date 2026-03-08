@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Annotated, Any
 from ..database import get_db
-from ..models import Teacher, Student, AppUser, UserRoleEnum, AvailabilitySlot, SkillLevel, Instrument
+from ..models import Teacher, Student, AppUser, UserRoleEnum, AvailabilitySlot, SkillLevel, Instrument, Enrollment, EnrollmentStatusEnum
 from ..auth import get_current_user, RoleChecker
 from ..services.email import send_welcome_email
 import uuid
@@ -17,6 +17,33 @@ AdminUser = Annotated[Any, Depends(RoleChecker([UserRoleEnum.ADMIN]))]
 @router.get("/instruments")
 async def get_instruments(db: Any = Depends(get_db)):
     return db.query(Instrument).all()
+
+
+@router.get("/enrollments")
+async def get_enrollments(
+    db: Any = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """Get all enrollments. Teachers see only their enrollments, admins see all."""
+    query = db.query(Enrollment)
+
+    if current_user.role == UserRoleEnum.TEACHER and hasattr(current_user, 'teacher') and current_user.teacher:
+        query = query.filter(Enrollment.teacher_id == current_user.teacher.id)
+    elif current_user.role == UserRoleEnum.STUDENT and hasattr(current_user, 'student') and current_user.student:
+        query = query.filter(Enrollment.student_id == current_user.student.id)
+
+    enrollments = query.all()
+    return [
+        {
+            "id": e.id,
+            "studentId": e.student_id,
+            "teacherId": e.teacher_id,
+            "instrumentId": e.instrument_id,
+            "startDate": e.start_date.isoformat() if e.start_date else None,
+            "status": e.status.value if e.status else None
+        } for e in enrollments
+    ]
+
 
 # Teachers Endpoints
 @router.get("/teachers", response_model=List[dict])

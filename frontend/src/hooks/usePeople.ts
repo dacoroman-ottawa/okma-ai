@@ -32,19 +32,22 @@ export function usePeople() {
                 // 2. Fetch Data
                 const headers = { Authorization: `Bearer ${access_token}` };
 
-                const [tchRes, stuRes, instRes] = await Promise.all([
+                const [tchRes, stuRes, instRes, enrRes] = await Promise.all([
                     fetch("http://localhost:8000/people/teachers", { headers }),
                     fetch("http://localhost:8000/people/students", { headers }),
-                    fetch("http://localhost:8000/people/instruments", { headers })
+                    fetch("http://localhost:8000/people/instruments", { headers }),
+                    fetch("http://localhost:8000/people/enrollments", { headers })
                 ]);
 
                 const tchData = toCamel(await tchRes.json());
                 const stuData = toCamel(await stuRes.json());
                 const instData = toCamel(await instRes.json());
+                const enrData = toCamel(await enrRes.json());
 
                 setTeachers(tchData);
                 setStudents(stuData);
                 setInstruments(instData);
+                setEnrollments(enrData);
 
                 // Map availability for students (as they are in the list)
                 const stuAvail: Record<string, AvailabilitySlot[]> = {};
