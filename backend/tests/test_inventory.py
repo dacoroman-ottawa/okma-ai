@@ -23,8 +23,6 @@ def override_get_db():
     finally:
         db.close()
 
-app.dependency_overrides[get_db] = override_get_db
-
 # Mock User
 class MockUser:
     def __init__(self, id, role="admin", is_admin=True):
@@ -34,6 +32,8 @@ class MockUser:
 
 @pytest.fixture(scope="function")
 def client():
+    # Set the override inside fixture to avoid module-level pollution
+    app.dependency_overrides[get_db] = override_get_db
     Base.metadata.create_all(bind=engine)
     yield TestClient(app)
     Base.metadata.drop_all(bind=engine)

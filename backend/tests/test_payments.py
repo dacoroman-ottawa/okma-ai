@@ -32,12 +32,12 @@ def override_get_db():
     finally:
         db.close()
 
-app.dependency_overrides[get_db] = override_get_db
-
 client = TestClient(app)
 
 @pytest.fixture(autouse=True)
 def setup_database():
+    # Set the override inside fixture to avoid module-level pollution
+    app.dependency_overrides[get_db] = override_get_db
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
@@ -104,14 +104,14 @@ def sample_data(db_session):
 
 def test_purchase_credits(admin_user, sample_data):
     app.dependency_overrides[get_current_user] = lambda: admin_user
-    
+
     response = client.post("/payments/credits/purchase", json={
-        "studentId": sample_data["student"].id,
-        "enrollmentId": sample_data["enrollment"].id,
+        "student_id": sample_data["student"].id,
+        "enrollment_id": sample_data["enrollment"].id,
         "credits": 5,
-        "discountAmount": 0,
-        "taxType": "HST",
-        "paymentMethod": "Credit Card"
+        "discount_amount": 0,
+        "tax_type": "HST",
+        "payment_method": "Credit Card"
     })
     
     assert response.status_code == 200
@@ -135,10 +135,10 @@ def test_purchase_credits(admin_user, sample_data):
 
 def test_credit_adjustment(admin_user, sample_data):
     app.dependency_overrides[get_current_user] = lambda: admin_user
-    
+
     response = client.post("/payments/credits/adjustment", json={
-        "studentId": sample_data["student"].id,
-        "enrollmentId": sample_data["enrollment"].id,
+        "student_id": sample_data["student"].id,
+        "enrollment_id": sample_data["enrollment"].id,
         "credits": -1,
         "note": "Correction"
     })
@@ -152,19 +152,19 @@ def test_credit_adjustment(admin_user, sample_data):
 
 def test_get_balances(admin_user, sample_data):
     app.dependency_overrides[get_current_user] = lambda: admin_user
-    
+
     # Add some transactions
     client.post("/payments/credits/purchase", json={
-        "studentId": sample_data["student"].id,
-        "enrollmentId": sample_data["enrollment"].id,
+        "student_id": sample_data["student"].id,
+        "enrollment_id": sample_data["enrollment"].id,
         "credits": 10,
-        "taxType": "None",
-        "paymentMethod": "Cash"
+        "tax_type": "None",
+        "payment_method": "Cash"
     })
-    
+
     client.post("/payments/credits/adjustment", json={
-        "studentId": sample_data["student"].id,
-        "enrollmentId": sample_data["enrollment"].id,
+        "student_id": sample_data["student"].id,
+        "enrollment_id": sample_data["enrollment"].id,
         "credits": -2,
         "note": "Used"
     })
@@ -188,18 +188,18 @@ def test_get_balances(admin_user, sample_data):
 
 def test_inventory_payment(admin_user, sample_data):
     app.dependency_overrides[get_current_user] = lambda: admin_user
-    
+
     line_item = {
         "description": "Guitar Strings",
         "quantity": 2,
         "unitPrice": 15.0
     }
-    
+
     response = client.post("/payments/inventory", json={
-        "customerId": sample_data["student"].id,
-        "paymentMethod": "Debit",
-        "taxType": "GST",
-        "lineItems": [line_item]
+        "customer_id": sample_data["student"].id,
+        "payment_method": "Debit",
+        "tax_type": "GST",
+        "line_items": [line_item]
     })
     
     assert response.status_code == 200
