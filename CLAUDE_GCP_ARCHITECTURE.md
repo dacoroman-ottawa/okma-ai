@@ -43,65 +43,58 @@ Fully serverless architecture using Cloud Run for both frontend and backend, wit
 
 ### Architecture Diagram
 
-```
-                                    ┌─────────────────────────────────────────────────────────────────┐
-                                    │                         GOOGLE CLOUD PLATFORM                   │
-                                    │                                                                 │
-┌──────────────┐                    │  ┌─────────────────────────────────────────────────────────┐   │
-│              │                    │  │                     VPC Network                          │   │
-│    Users     │                    │  │                                                          │   │
-│  (Browser)   │                    │  │   ┌─────────────────────────────────────────────────┐   │   │
-│              │                    │  │   │              Cloud Load Balancer                 │   │   │
-└──────┬───────┘                    │  │   │         (Global HTTP(S) Load Balancer)           │   │   │
-       │                            │  │   │    ┌─────────────┬─────────────────────┐         │   │   │
-       │ HTTPS                      │  │   │    │   /api/*    │    /* (default)     │         │   │   │
-       │                            │  │   │    └──────┬──────┴──────────┬──────────┘         │   │   │
-       │                            │  │   └───────────┼─────────────────┼────────────────────┘   │   │
-       │                            │  │               │                 │                        │   │
-       │                            │  │   ┌───────────▼───────────┐ ┌───▼───────────────────┐   │   │
-       │                            │  │   │                       │ │                       │   │   │
-       │                            │  │   │    Cloud Run          │ │    Cloud Run          │   │   │
-       │                            │  │   │    (Backend API)      │ │    (Frontend)         │   │   │
-       │                            │  │   │                       │ │                       │   │   │
-       │                            │  │   │  ┌─────────────────┐  │ │  ┌─────────────────┐  │   │   │
-       │                            │  │   │  │ FastAPI         │  │ │  │ Next.js         │  │   │   │
-       │                            │  │   │  │ Container       │  │ │  │ Container       │  │   │   │
-       └────────────────────────────┼──┼───┼──► (0-10 instances)│  │ │  │ (0-10 instances)│  │   │   │
-                                    │  │   │  └────────┬────────┘  │ │  └─────────────────┘  │   │   │
-                                    │  │   │           │           │ │                       │   │   │
-                                    │  │   └───────────┼───────────┘ └───────────────────────┘   │   │
-                                    │  │               │                                          │   │
-                                    │  │   ┌───────────▼───────────────────────────────────────┐  │   │
-                                    │  │   │              Private Services Subnet              │  │   │
-                                    │  │   │                                                   │  │   │
-                                    │  │   │  ┌─────────────────┐   ┌─────────────────────┐   │  │   │
-                                    │  │   │  │   Cloud SQL     │   │   Secret Manager    │   │  │   │
-                                    │  │   │  │   (PostgreSQL)  │   │                     │   │  │   │
-                                    │  │   │  │                 │   │  - DB credentials   │   │  │   │
-                                    │  │   │  │  HA: Regional   │   │  - JWT secret       │   │  │   │
-                                    │  │   │  │  Backup: Daily  │   │  - API keys         │   │  │   │
-                                    │  │   │  └─────────────────┘   └─────────────────────┘   │  │   │
-                                    │  │   │                                                   │  │   │
-                                    │  │   └───────────────────────────────────────────────────┘  │   │
-                                    │  │                                                          │   │
-                                    │  └──────────────────────────────────────────────────────────┘   │
-                                    │                                                                 │
-                                    │  ┌──────────────────────────────────────────────────────────┐   │
-                                    │  │                    Supporting Services                    │   │
-                                    │  │                                                          │   │
-                                    │  │  ┌────────────┐  ┌────────────┐  ┌────────────────────┐  │   │
-                                    │  │  │ Cloud      │  │ Cloud      │  │ Artifact           │  │   │
-                                    │  │  │ Logging    │  │ Monitoring │  │ Registry           │  │   │
-                                    │  │  └────────────┘  └────────────┘  └────────────────────┘  │   │
-                                    │  │                                                          │   │
-                                    │  │  ┌────────────┐  ┌────────────┐  ┌────────────────────┐  │   │
-                                    │  │  │ Cloud      │  │ Cloud      │  │ Identity-Aware     │  │   │
-                                    │  │  │ Armor      │  │ CDN        │  │ Proxy (IAP)        │  │   │
-                                    │  │  └────────────┘  └────────────┘  └────────────────────┘  │   │
-                                    │  │                                                          │   │
-                                    │  └──────────────────────────────────────────────────────────┘   │
-                                    │                                                                 │
-                                    └─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Internet
+        Users["👥 Users (Browser)"]
+    end
+
+    subgraph GCP["Google Cloud Platform"]
+        subgraph VPC["VPC Network"]
+            subgraph LB["Cloud Load Balancer"]
+                GLB["Global HTTP(S) Load Balancer<br/>Managed SSL"]
+                Routes{{"URL Routing"}}
+                GLB --> Routes
+                Routes -->|"/api/*"| BackendNEG
+                Routes -->|"/* (default)"| FrontendNEG
+            end
+
+            subgraph CloudRun["Cloud Run Services"]
+                subgraph Backend["Cloud Run (Backend API)"]
+                    BackendNEG["Serverless NEG"]
+                    FastAPI["FastAPI Container<br/>0-10 instances<br/>2 vCPU, 1GB RAM"]
+                    BackendNEG --> FastAPI
+                end
+
+                subgraph Frontend["Cloud Run (Frontend)"]
+                    FrontendNEG["Serverless NEG"]
+                    NextJS["Next.js Container<br/>0-10 instances<br/>1 vCPU, 512MB RAM"]
+                    FrontendNEG --> NextJS
+                end
+            end
+
+            subgraph PrivateSubnet["Private Services Subnet"]
+                CloudSQL[("Cloud SQL<br/>PostgreSQL 15<br/>HA: Regional<br/>Backup: Daily")]
+                Secrets["🔐 Secret Manager<br/>• DB credentials<br/>• JWT secret<br/>• API keys"]
+            end
+
+            FastAPI -.->|"VPC Connector"| CloudSQL
+            FastAPI -.-> Secrets
+        end
+
+        subgraph Supporting["Supporting Services"]
+            Logging["📊 Cloud Logging"]
+            Monitoring["📈 Cloud Monitoring"]
+            Artifact["📦 Artifact Registry"]
+            Armor["🛡️ Cloud Armor"]
+            CDN["⚡ Cloud CDN"]
+            IAP["🔒 Identity-Aware Proxy"]
+        end
+    end
+
+    Users -->|"HTTPS"| GLB
+    Armor -.->|"WAF Protection"| LB
+    CDN -.->|"Caching"| Frontend
 ```
 
 ### Component Details
@@ -154,136 +147,113 @@ Container orchestration platform using GKE Autopilot for managed Kubernetes, pro
 
 ### Architecture Diagram
 
-```
-                                    ┌─────────────────────────────────────────────────────────────────┐
-                                    │                         GOOGLE CLOUD PLATFORM                   │
-                                    │                                                                 │
-┌──────────────┐                    │  ┌─────────────────────────────────────────────────────────┐   │
-│              │                    │  │                     VPC Network                          │   │
-│    Users     │                    │  │                                                          │   │
-│  (Browser)   │                    │  │   ┌─────────────────────────────────────────────────┐   │   │
-│              │                    │  │   │         Cloud Load Balancer (Ingress)            │   │   │
-└──────┬───────┘                    │  │   │              + Cloud Armor WAF                   │   │   │
-       │                            │  │   └──────────────────────┬──────────────────────────┘   │   │
-       │ HTTPS                      │  │                          │                              │   │
-       │                            │  │   ┌──────────────────────▼──────────────────────────┐   │   │
-       │                            │  │   │              GKE Autopilot Cluster               │   │   │
-       │                            │  │   │                                                  │   │   │
-       │                            │  │   │  ┌────────────────────────────────────────────┐ │   │   │
-       │                            │  │   │  │              Ingress Controller             │ │   │   │
-       │                            │  │   │  │           (NGINX or GCE Ingress)            │ │   │   │
-       │                            │  │   │  └─────────────┬──────────────┬───────────────┘ │   │   │
-       │                            │  │   │                │              │                 │   │   │
-       │                            │  │   │  ┌─────────────▼────────┐ ┌───▼──────────────┐  │   │   │
-       │                            │  │   │  │   Backend Service    │ │ Frontend Service │  │   │   │
-       │                            │  │   │  │                      │ │                  │  │   │   │
-       └────────────────────────────┼──┼───┼──│  ┌────────────────┐  │ │ ┌──────────────┐ │  │   │   │
-                                    │  │   │  │  │ FastAPI Pods   │  │ │ │ Next.js Pods │ │  │   │   │
-                                    │  │   │  │  │ (2-10 replicas)│  │ │ │ (2-8 replicas)│ │  │   │   │
-                                    │  │   │  │  │                │  │ │ │              │ │  │   │   │
-                                    │  │   │  │  │ HPA enabled    │  │ │ │ HPA enabled  │ │  │   │   │
-                                    │  │   │  │  └───────┬────────┘  │ │ └──────────────┘ │  │   │   │
-                                    │  │   │  │          │           │ │                  │  │   │   │
-                                    │  │   │  └──────────┼───────────┘ └──────────────────┘  │   │   │
-                                    │  │   │             │                                   │   │   │
-                                    │  │   │  ┌──────────▼───────────────────────────────┐   │   │   │
-                                    │  │   │  │           Workload Identity              │   │   │   │
-                                    │  │   │  │    (Service Account Impersonation)       │   │   │   │
-                                    │  │   │  └──────────┬───────────────────────────────┘   │   │   │
-                                    │  │   │             │                                   │   │   │
-                                    │  │   └─────────────┼───────────────────────────────────┘   │   │
-                                    │  │                 │                                       │   │
-                                    │  │   ┌─────────────▼───────────────────────────────────┐   │   │
-                                    │  │   │              Private Services Subnet            │   │   │
-                                    │  │   │                                                 │   │   │
-                                    │  │   │  ┌─────────────────┐   ┌─────────────────────┐  │   │   │
-                                    │  │   │  │   Cloud SQL     │   │   Memorystore       │  │   │   │
-                                    │  │   │  │   (PostgreSQL)  │   │   (Redis)           │  │   │   │
-                                    │  │   │  │                 │   │                     │  │   │   │
-                                    │  │   │  │  HA: Regional   │   │  Session cache      │  │   │   │
-                                    │  │   │  │  Backup: Daily  │   │  API rate limiting  │  │   │   │
-                                    │  │   │  └─────────────────┘   └─────────────────────┘  │   │   │
-                                    │  │   │                                                 │   │   │
-                                    │  │   │  ┌─────────────────┐   ┌─────────────────────┐  │   │   │
-                                    │  │   │  │ Secret Manager  │   │  Cloud Storage      │  │   │   │
-                                    │  │   │  │                 │   │  (Static assets)    │  │   │   │
-                                    │  │   │  └─────────────────┘   └─────────────────────┘  │   │   │
-                                    │  │   │                                                 │   │   │
-                                    │  │   └─────────────────────────────────────────────────┘   │   │
-                                    │  │                                                         │   │
-                                    │  └─────────────────────────────────────────────────────────┘   │
-                                    │                                                                 │
-                                    │  ┌──────────────────────────────────────────────────────────┐   │
-                                    │  │                    Supporting Services                    │   │
-                                    │  │                                                          │   │
-                                    │  │  ┌────────────┐  ┌────────────┐  ┌────────────────────┐  │   │
-                                    │  │  │ Cloud      │  │ Cloud      │  │ Artifact           │  │   │
-                                    │  │  │ Logging    │  │ Monitoring │  │ Registry           │  │   │
-                                    │  │  └────────────┘  └────────────┘  └────────────────────┘  │   │
-                                    │  │                                                          │   │
-                                    │  │  ┌────────────┐  ┌────────────┐  ┌────────────────────┐  │   │
-                                    │  │  │ Cloud      │  │ Cloud      │  │ Cloud Build        │  │   │
-                                    │  │  │ Armor      │  │ CDN        │  │ (CI/CD)            │  │   │
-                                    │  │  └────────────┘  └────────────┘  └────────────────────┘  │   │
-                                    │  │                                                          │   │
-                                    │  └──────────────────────────────────────────────────────────┘   │
-                                    │                                                                 │
-                                    └─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Internet
+        Users["👥 Users (Browser)"]
+    end
+
+    subgraph GCP["Google Cloud Platform"]
+        subgraph VPC["VPC Network"]
+            subgraph LB["Cloud Load Balancer + Cloud Armor WAF"]
+                GLB["Global HTTP(S) Load Balancer"]
+            end
+
+            subgraph GKE["GKE Autopilot Cluster"]
+                Ingress["Ingress Controller<br/>(NGINX or GCE Ingress)"]
+
+                subgraph BackendSvc["Backend Service"]
+                    BackendPods["FastAPI Pods<br/>2-10 replicas<br/>HPA enabled"]
+                end
+
+                subgraph FrontendSvc["Frontend Service"]
+                    FrontendPods["Next.js Pods<br/>2-8 replicas<br/>HPA enabled"]
+                end
+
+                WorkloadID["🔑 Workload Identity<br/>(Service Account Impersonation)"]
+
+                GLB --> Ingress
+                Ingress -->|"/api/*"| BackendSvc
+                Ingress -->|"/*"| FrontendSvc
+                BackendPods --> WorkloadID
+            end
+
+            subgraph PrivateSubnet["Private Services Subnet"]
+                CloudSQL[("Cloud SQL<br/>PostgreSQL<br/>HA: Regional")]
+                Redis[("Memorystore<br/>Redis<br/>Session cache")]
+                Secrets["🔐 Secret Manager"]
+                Storage["📁 Cloud Storage<br/>(Static assets)"]
+            end
+
+            WorkloadID -.-> CloudSQL
+            WorkloadID -.-> Redis
+            WorkloadID -.-> Secrets
+        end
+
+        subgraph Supporting["Supporting Services"]
+            Logging["📊 Cloud Logging"]
+            Monitoring["📈 Cloud Monitoring"]
+            Artifact["📦 Artifact Registry"]
+            Armor["🛡️ Cloud Armor"]
+            CDN["⚡ Cloud CDN"]
+            Build["🔧 Cloud Build (CI/CD)"]
+        end
+    end
+
+    Users -->|"HTTPS"| GLB
 ```
 
 ### Kubernetes Resource Diagram
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│                              GKE Autopilot Cluster                                       │
-│                                                                                          │
-│  ┌────────────────────────────────────────────────────────────────────────────────────┐ │
-│  │                              Namespace: kanata-academy                              │ │
-│  │                                                                                     │ │
-│  │  ┌─────────────────────────────────────┐  ┌─────────────────────────────────────┐  │ │
-│  │  │         Deployment: backend         │  │        Deployment: frontend         │  │ │
-│  │  │                                     │  │                                     │  │ │
-│  │  │  replicas: 2 (min) - 10 (max)       │  │  replicas: 2 (min) - 8 (max)        │  │ │
-│  │  │  resources:                         │  │  resources:                         │  │ │
-│  │  │    requests: 500m CPU, 512Mi        │  │    requests: 250m CPU, 256Mi        │  │ │
-│  │  │    limits: 2 CPU, 2Gi               │  │    limits: 1 CPU, 1Gi               │  │ │
-│  │  │                                     │  │                                     │  │ │
-│  │  │  ┌─────────┐ ┌─────────┐            │  │  ┌─────────┐ ┌─────────┐            │  │ │
-│  │  │  │  Pod 1  │ │  Pod 2  │  ...       │  │  │  Pod 1  │ │  Pod 2  │  ...       │  │ │
-│  │  │  └─────────┘ └─────────┘            │  │  └─────────┘ └─────────┘            │  │ │
-│  │  └──────────────────┬──────────────────┘  └──────────────────┬──────────────────┘  │ │
-│  │                     │                                        │                     │ │
-│  │  ┌──────────────────▼──────────────────┐  ┌──────────────────▼──────────────────┐  │ │
-│  │  │      Service: backend-svc           │  │      Service: frontend-svc          │  │ │
-│  │  │      Type: ClusterIP                │  │      Type: ClusterIP                │  │ │
-│  │  │      Port: 8000                     │  │      Port: 3000                     │  │ │
-│  │  └──────────────────┬──────────────────┘  └──────────────────┬──────────────────┘  │ │
-│  │                     │                                        │                     │ │
-│  │  ┌──────────────────┴────────────────────────────────────────┴──────────────────┐  │ │
-│  │  │                              Ingress                                          │  │ │
-│  │  │                                                                               │  │ │
-│  │  │  rules:                                                                       │  │ │
-│  │  │    - host: kanata.example.com                                                 │  │ │
-│  │  │      paths:                                                                   │  │ │
-│  │  │        - path: /api/*  → backend-svc:8000                                     │  │ │
-│  │  │        - path: /*      → frontend-svc:3000                                    │  │ │
-│  │  └───────────────────────────────────────────────────────────────────────────────┘  │ │
-│  │                                                                                     │ │
-│  │  ┌─────────────────────────────────────┐  ┌─────────────────────────────────────┐  │ │
-│  │  │      HPA: backend-hpa               │  │      HPA: frontend-hpa              │  │ │
-│  │  │      targetCPU: 70%                 │  │      targetCPU: 70%                 │  │ │
-│  │  │      min: 2, max: 10                │  │      min: 2, max: 8                 │  │ │
-│  │  └─────────────────────────────────────┘  └─────────────────────────────────────┘  │ │
-│  │                                                                                     │ │
-│  │  ┌─────────────────────────────────────┐  ┌─────────────────────────────────────┐  │ │
-│  │  │      ConfigMap: app-config          │  │      Secret: app-secrets            │  │ │
-│  │  │      (externalized from             │  │      (references Secret Manager)    │  │ │
-│  │  │       Secret Manager)               │  │                                     │  │ │
-│  │  └─────────────────────────────────────┘  └─────────────────────────────────────┘  │ │
-│  │                                                                                     │ │
-│  └─────────────────────────────────────────────────────────────────────────────────────┘ │
-│                                                                                          │
-└──────────────────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Cluster["GKE Autopilot Cluster"]
+        subgraph NS["Namespace: kanata-academy"]
+            subgraph Deployments["Deployments"]
+                subgraph BackendDeploy["Deployment: backend"]
+                    BackendSpec["replicas: 2-10<br/>requests: 500m CPU, 512Mi<br/>limits: 2 CPU, 2Gi"]
+                    Pod1B["Pod 1"]
+                    Pod2B["Pod 2"]
+                    PodNB["..."]
+                end
+
+                subgraph FrontendDeploy["Deployment: frontend"]
+                    FrontendSpec["replicas: 2-8<br/>requests: 250m CPU, 256Mi<br/>limits: 1 CPU, 1Gi"]
+                    Pod1F["Pod 1"]
+                    Pod2F["Pod 2"]
+                    PodNF["..."]
+                end
+            end
+
+            subgraph Services["Services"]
+                BackendSvc["Service: backend-svc<br/>Type: ClusterIP<br/>Port: 8000"]
+                FrontendSvc["Service: frontend-svc<br/>Type: ClusterIP<br/>Port: 3000"]
+            end
+
+            subgraph IngressLayer["Ingress"]
+                Ingress["Ingress: kanata-ingress<br/>host: kanata.example.com"]
+                PathAPI["/api/* → backend-svc:8000"]
+                PathDefault["/* → frontend-svc:3000"]
+            end
+
+            subgraph Autoscaling["Horizontal Pod Autoscalers"]
+                HPAB["HPA: backend-hpa<br/>targetCPU: 70%<br/>min: 2, max: 10"]
+                HPAF["HPA: frontend-hpa<br/>targetCPU: 70%<br/>min: 2, max: 8"]
+            end
+
+            subgraph Config["Configuration"]
+                ConfigMap["ConfigMap: app-config<br/>(externalized from Secret Manager)"]
+                Secrets["Secret: app-secrets<br/>(references Secret Manager)"]
+            end
+        end
+    end
+
+    Ingress --> PathAPI --> BackendSvc --> BackendDeploy
+    Ingress --> PathDefault --> FrontendSvc --> FrontendDeploy
+    HPAB -.->|"scales"| BackendDeploy
+    HPAF -.->|"scales"| FrontendDeploy
+    ConfigMap -.-> BackendDeploy
+    Secrets -.-> BackendDeploy
 ```
 
 ### Estimated Monthly Cost
@@ -324,80 +294,60 @@ Hybrid architecture using Compute Engine for the database and App Engine Flexibl
 
 ### Architecture Diagram
 
-```
-                                    ┌─────────────────────────────────────────────────────────────────┐
-                                    │                         GOOGLE CLOUD PLATFORM                   │
-                                    │                                                                 │
-┌──────────────┐                    │  ┌─────────────────────────────────────────────────────────┐   │
-│              │                    │  │                     VPC Network                          │   │
-│    Users     │                    │  │                                                          │   │
-│  (Browser)   │                    │  │   ┌─────────────────────────────────────────────────┐   │   │
-│              │                    │  │   │              Cloud Load Balancer                 │   │   │
-└──────┬───────┘                    │  │   │         (Global HTTP(S) Load Balancer)           │   │   │
-       │                            │  │   │                 + Cloud CDN                      │   │   │
-       │ HTTPS                      │  │   └──────────────────────┬──────────────────────────┘   │   │
-       │                            │  │                          │                              │   │
-       │                            │  │          ┌───────────────┴───────────────┐              │   │
-       │                            │  │          │                               │              │   │
-       │                            │  │   ┌──────▼──────────────┐    ┌───────────▼────────────┐ │   │
-       │                            │  │   │                     │    │                        │ │   │
-       │                            │  │   │   App Engine Flex   │    │   App Engine Flex      │ │   │
-       │                            │  │   │   (Backend)         │    │   (Frontend)           │ │   │
-       │                            │  │   │                     │    │                        │ │   │
-       │                            │  │   │  Service: api       │    │  Service: default      │ │   │
-       │                            │  │   │  Runtime: python    │    │  Runtime: nodejs       │ │   │
-       │                            │  │   │  Instances: 1-4     │    │  Instances: 1-4        │ │   │
-       └────────────────────────────┼──┼───│                     │    │                        │ │   │
-                                    │  │   │  ┌───────────────┐  │    │  ┌─────────────────┐   │ │   │
-                                    │  │   │  │   FastAPI     │  │    │  │   Next.js       │   │ │   │
-                                    │  │   │  │   App         │  │    │  │   App           │   │ │   │
-                                    │  │   │  └───────┬───────┘  │    │  └─────────────────┘   │ │   │
-                                    │  │   │          │          │    │                        │ │   │
-                                    │  │   └──────────┼──────────┘    └────────────────────────┘ │   │
-                                    │  │              │                                          │   │
-                                    │  │   ┌──────────▼─────────────────────────────────────┐   │   │
-                                    │  │   │                  Private Subnet                │   │   │
-                                    │  │   │                                                │   │   │
-                                    │  │   │  ┌──────────────────────────────────────────┐  │   │   │
-                                    │  │   │  │         Compute Engine Instance          │  │   │   │
-                                    │  │   │  │         (Database Server)                │  │   │   │
-                                    │  │   │  │                                          │  │   │   │
-                                    │  │   │  │  Machine: e2-standard-2                  │  │   │   │
-                                    │  │   │  │  Disk: 100GB SSD (pd-ssd)                │  │   │   │
-                                    │  │   │  │  OS: Ubuntu 22.04 LTS                    │  │   │   │
-                                    │  │   │  │                                          │  │   │   │
-                                    │  │   │  │  ┌──────────────────────────────────┐    │  │   │   │
-                                    │  │   │  │  │      PostgreSQL 15               │    │  │   │   │
-                                    │  │   │  │  │      + Automated backups         │    │  │   │   │
-                                    │  │   │  │  └──────────────────────────────────┘    │  │   │   │
-                                    │  │   │  │                                          │  │   │   │
-                                    │  │   │  └──────────────────────────────────────────┘  │   │   │
-                                    │  │   │                                                │   │   │
-                                    │  │   │  ┌─────────────────┐   ┌───────────────────┐   │   │   │
-                                    │  │   │  │ Cloud Storage   │   │ Secret Manager    │   │   │   │
-                                    │  │   │  │ (Backups)       │   │                   │   │   │   │
-                                    │  │   │  └─────────────────┘   └───────────────────┘   │   │   │
-                                    │  │   │                                                │   │   │
-                                    │  │   └────────────────────────────────────────────────┘   │   │
-                                    │  │                                                         │   │
-                                    │  └─────────────────────────────────────────────────────────┘   │
-                                    │                                                                 │
-                                    │  ┌──────────────────────────────────────────────────────────┐   │
-                                    │  │                    Supporting Services                    │   │
-                                    │  │                                                          │   │
-                                    │  │  ┌────────────┐  ┌────────────┐  ┌────────────────────┐  │   │
-                                    │  │  │ Cloud      │  │ Cloud      │  │ Cloud Scheduler    │  │   │
-                                    │  │  │ Logging    │  │ Monitoring │  │ (Backup jobs)      │  │   │
-                                    │  │  └────────────┘  └────────────┘  └────────────────────┘  │   │
-                                    │  │                                                          │   │
-                                    │  │  ┌────────────┐  ┌────────────┐  ┌────────────────────┐  │   │
-                                    │  │  │ Cloud      │  │ Cloud      │  │ Container          │  │   │
-                                    │  │  │ Armor      │  │ CDN        │  │ Registry           │  │   │
-                                    │  │  └────────────┘  └────────────┘  └────────────────────┘  │   │
-                                    │  │                                                          │   │
-                                    │  └──────────────────────────────────────────────────────────┘   │
-                                    │                                                                 │
-                                    └─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Internet
+        Users["👥 Users (Browser)"]
+    end
+
+    subgraph GCP["Google Cloud Platform"]
+        subgraph VPC["VPC Network"]
+            subgraph LB["Cloud Load Balancer + Cloud CDN"]
+                GLB["Global HTTP(S) Load Balancer"]
+            end
+
+            subgraph AppEngine["App Engine Flexible"]
+                subgraph BackendAE["App Engine Flex (Backend)"]
+                    BackendInfo["Service: api<br/>Runtime: python<br/>Instances: 1-4"]
+                    FastAPI["FastAPI App"]
+                end
+
+                subgraph FrontendAE["App Engine Flex (Frontend)"]
+                    FrontendInfo["Service: default<br/>Runtime: nodejs<br/>Instances: 1-4"]
+                    NextJS["Next.js App"]
+                end
+            end
+
+            GLB -->|"/api/*"| BackendAE
+            GLB -->|"/*"| FrontendAE
+
+            subgraph PrivateSubnet["Private Subnet"]
+                subgraph CE["Compute Engine Instance"]
+                    CEInfo["Machine: e2-standard-2<br/>Disk: 100GB SSD (pd-ssd)<br/>OS: Ubuntu 22.04 LTS"]
+                    PostgreSQL[("PostgreSQL 15<br/>+ Automated backups")]
+                end
+
+                Storage["📁 Cloud Storage<br/>(Backups)"]
+                Secrets["🔐 Secret Manager"]
+            end
+
+            FastAPI --> PostgreSQL
+            FastAPI -.-> Secrets
+            PostgreSQL -.->|"Backup"| Storage
+        end
+
+        subgraph Supporting["Supporting Services"]
+            Logging["📊 Cloud Logging"]
+            Monitoring["📈 Cloud Monitoring"]
+            Scheduler["⏰ Cloud Scheduler<br/>(Backup jobs)"]
+            Armor["🛡️ Cloud Armor"]
+            CDN["⚡ Cloud CDN"]
+            Registry["📦 Container Registry"]
+        end
+    end
+
+    Users -->|"HTTPS"| GLB
+    Scheduler -.->|"triggers"| Storage
 ```
 
 ### Estimated Monthly Cost
