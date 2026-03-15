@@ -45,39 +45,42 @@ export function SalesTab({
   const totalRevenue = sales.reduce((sum, sale) => sum + sale.totalAmount, 0)
 
   return (
-    <div className="space-y-6">
-      {/* Header with stats */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-6">
-          <div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-              Total Sales
-            </p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {sales.length}
-            </p>
+    <div className="flex h-full flex-col">
+      {/* Fixed header */}
+      <div className="shrink-0 pb-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-6">
+            <div>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                Total Sales
+              </p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                {sales.length}
+              </p>
+            </div>
+            <div className="h-8 w-px bg-slate-200 dark:bg-slate-700" />
+            <div>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                Revenue
+              </p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                {formatCurrency(totalRevenue)}
+              </p>
+            </div>
           </div>
-          <div className="h-8 w-px bg-slate-200 dark:bg-slate-700" />
-          <div>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-              Revenue
-            </p>
-            <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {formatCurrency(totalRevenue)}
-            </p>
-          </div>
-        </div>
 
-        <button
-          onClick={onRecordSale}
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md active:scale-[0.98]"
-        >
-          <Plus className="h-4 w-4" />
-          Record Sale
-        </button>
+          <button
+            onClick={onRecordSale}
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md active:scale-[0.98]"
+          >
+            <Plus className="h-4 w-4" />
+            Record Sale
+          </button>
+        </div>
       </div>
 
-      {/* Sales table */}
+      {/* Scrollable sales list */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
       {sortedSales.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-900">
           <ShoppingBag className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
@@ -188,7 +191,8 @@ export function SalesTab({
             ))}
           </div>
         </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

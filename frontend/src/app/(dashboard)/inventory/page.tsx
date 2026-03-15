@@ -5,7 +5,8 @@ import { useInventory } from "@/hooks/useInventory"
 import { InventoryView } from "@/components/inventory/InventoryView"
 import { CustomerFormModal } from "@/components/inventory/CustomerFormModal"
 import { SupplierFormModal } from "@/components/inventory/SupplierFormModal"
-import type { Customer, Supplier, InventoryTabType } from "@/types/inventory"
+import { ProductFormModal } from "@/components/inventory/ProductFormModal"
+import type { Customer, Supplier, Product, InventoryTabType } from "@/types/inventory"
 
 export default function InventoryPage() {
     const {
@@ -16,6 +17,8 @@ export default function InventoryPage() {
         sales,
         loading,
         error,
+        createProduct,
+        updateProduct,
         deleteProduct,
         createSupplier,
         deleteSupplier,
@@ -32,6 +35,9 @@ export default function InventoryPage() {
     const [supplierModalOpen, setSupplierModalOpen] = useState(false)
     const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
     const [togglingSupplier, setTogglingSupplier] = useState<string | null>(null)
+    const [productModalOpen, setProductModalOpen] = useState(false)
+    const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+    const [togglingProduct, setTogglingProduct] = useState<string | null>(null)
 
     const handleAddCustomer = () => {
         setEditingCustomer(null)
@@ -97,6 +103,42 @@ export default function InventoryPage() {
         }
     }
 
+    const handleAddProduct = () => {
+        setEditingProduct(null)
+        setProductModalOpen(true)
+    }
+
+    const handleEditProduct = (id: string) => {
+        const product = products.find((p) => p.id === id)
+        if (product) {
+            setEditingProduct(product)
+            setProductModalOpen(true)
+        }
+    }
+
+    const handleSaveProduct = async (data: Partial<Product>) => {
+        if (editingProduct) {
+            return await updateProduct(editingProduct.id, data)
+        } else {
+            return await createProduct(data)
+        }
+    }
+
+    const handleToggleProductStatus = async (id: string) => {
+        // Prevent multiple simultaneous toggles
+        if (togglingProduct) return
+
+        const product = products.find((p) => p.id === id)
+        if (product) {
+            setTogglingProduct(id)
+            try {
+                await updateProduct(id, { active: !product.active })
+            } finally {
+                setTogglingProduct(null)
+            }
+        }
+    }
+
     // Only show loading spinner on initial load, not on refreshes
     const isInitialLoad = loading && products.length === 0
 
@@ -129,9 +171,10 @@ export default function InventoryPage() {
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
                 onViewProduct={(id: string) => console.log("View product:", id)}
-                onEditProduct={(id: string) => console.log("Edit product:", id)}
+                onEditProduct={handleEditProduct}
                 onDeleteProduct={(id: string) => deleteProduct(id)}
-                onAddProduct={() => console.log("Add product")}
+                onToggleProductStatus={handleToggleProductStatus}
+                onAddProduct={handleAddProduct}
                 onViewSupplier={(id: string) => console.log("View supplier:", id)}
                 onEditSupplier={handleEditSupplier}
                 onDeleteSupplier={(id: string) => deleteSupplier(id)}
@@ -161,6 +204,14 @@ export default function InventoryPage() {
                 isOpen={supplierModalOpen}
                 onClose={() => setSupplierModalOpen(false)}
                 onSave={handleSaveSupplier}
+            />
+
+            <ProductFormModal
+                product={editingProduct}
+                suppliers={suppliers}
+                isOpen={productModalOpen}
+                onClose={() => setProductModalOpen(false)}
+                onSave={handleSaveProduct}
             />
         </>
     )

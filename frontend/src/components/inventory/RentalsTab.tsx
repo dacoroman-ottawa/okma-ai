@@ -90,57 +90,60 @@ export function RentalsTab({
   const overdueCount = rentals.filter((r) => r.status === 'overdue').length
 
   return (
-    <div className="space-y-6">
-      {/* Stats and actions */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap gap-3">
-          <button
-            onClick={() => setStatusFilter(statusFilter === 'all' ? 'all' : 'all')}
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-              statusFilter === 'all'
-                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-            }`}
-          >
-            All ({rentals.length})
-          </button>
-          <button
-            onClick={() => setStatusFilter(statusFilter === 'active' ? 'all' : 'active')}
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-              statusFilter === 'active'
-                ? 'bg-indigo-600 text-white'
-                : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:hover:bg-indigo-900/50'
-            }`}
-          >
-            Active ({activeCount})
-          </button>
-          {overdueCount > 0 && (
+    <div className="flex h-full flex-col">
+      {/* Fixed header */}
+      <div className="shrink-0 pb-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap gap-3">
             <button
-              onClick={() => setStatusFilter(statusFilter === 'overdue' ? 'all' : 'overdue')}
+              onClick={() => setStatusFilter(statusFilter === 'all' ? 'all' : 'all')}
               className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                statusFilter === 'overdue'
-                  ? 'bg-red-600 text-white'
-                  : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50'
+                statusFilter === 'all'
+                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
               }`}
             >
-              <span className="flex items-center gap-1.5">
-                <AlertCircle className="h-4 w-4" />
-                Overdue ({overdueCount})
-              </span>
+              All ({rentals.length})
             </button>
-          )}
-        </div>
+            <button
+              onClick={() => setStatusFilter(statusFilter === 'active' ? 'all' : 'active')}
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                statusFilter === 'active'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-400 dark:hover:bg-indigo-900/50'
+              }`}
+            >
+              Active ({activeCount})
+            </button>
+            {overdueCount > 0 && (
+              <button
+                onClick={() => setStatusFilter(statusFilter === 'overdue' ? 'all' : 'overdue')}
+                className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  statusFilter === 'overdue'
+                    ? 'bg-red-600 text-white'
+                    : 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50'
+                }`}
+              >
+                <span className="flex items-center gap-1.5">
+                  <AlertCircle className="h-4 w-4" />
+                  Overdue ({overdueCount})
+                </span>
+              </button>
+            )}
+          </div>
 
-        <button
-          onClick={onCreateRental}
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md active:scale-[0.98]"
-        >
-          <Plus className="h-4 w-4" />
-          New Rental
-        </button>
+          <button
+            onClick={onCreateRental}
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md active:scale-[0.98]"
+          >
+            <Plus className="h-4 w-4" />
+            New Rental
+          </button>
+        </div>
       </div>
 
-      {/* Rentals list */}
+      {/* Scrollable rentals list */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
       {filteredRentals.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-900">
           <Clock className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
@@ -307,7 +310,8 @@ export function RentalsTab({
             })}
           </div>
         </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

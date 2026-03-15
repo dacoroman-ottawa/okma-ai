@@ -48,24 +48,27 @@ export function SuppliersTab({
   const activeCount = suppliers.filter((s) => s.active).length
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          {activeCount} active supplier{activeCount !== 1 ? 's' : ''}
-          {suppliers.length > activeCount && ` (${suppliers.length - activeCount} inactive)`}
-        </p>
+    <div className="flex h-full flex-col">
+      {/* Fixed header */}
+      <div className="shrink-0 pb-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {activeCount} active supplier{activeCount !== 1 ? 's' : ''}
+            {suppliers.length > activeCount && ` (${suppliers.length - activeCount} inactive)`}
+          </p>
 
-        <button
-          onClick={onAddSupplier}
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md active:scale-[0.98]"
-        >
-          <Plus className="h-4 w-4" />
-          Add Supplier
-        </button>
+          <button
+            onClick={onAddSupplier}
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md active:scale-[0.98]"
+          >
+            <Plus className="h-4 w-4" />
+            Add Supplier
+          </button>
+        </div>
       </div>
 
-      {/* Suppliers grid */}
+      {/* Scrollable suppliers grid */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
       {sortedSuppliers.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-900">
           <Truck className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
@@ -217,7 +220,8 @@ export function SuppliersTab({
             )
           })}
         </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

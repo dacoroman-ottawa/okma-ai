@@ -86,6 +86,8 @@ export interface ProductListProps {
   onEditProduct?: (id: string) => void
   /** Called when user wants to delete a product */
   onDeleteProduct?: (id: string) => void
+  /** Called when user wants to toggle product active status */
+  onToggleProductStatus?: (id: string) => void
   /** Called when user wants to add a new product */
   onAddProduct?: () => void
 }
@@ -175,6 +177,8 @@ export interface InventoryProps {
   onEditProduct?: (id: string) => void
   /** Called when user wants to delete a product */
   onDeleteProduct?: (id: string) => void
+  /** Called when user wants to toggle product active status */
+  onToggleProductStatus?: (id: string) => void
   /** Called when user wants to add a new product */
   onAddProduct?: () => void
   /** Called when user wants to view supplier details */
