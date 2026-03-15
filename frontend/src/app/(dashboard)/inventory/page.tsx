@@ -4,7 +4,8 @@ import { useState } from "react"
 import { useInventory } from "@/hooks/useInventory"
 import { InventoryView } from "@/components/inventory/InventoryView"
 import { CustomerFormModal } from "@/components/inventory/CustomerFormModal"
-import type { Customer, InventoryTabType } from "@/types/inventory"
+import { SupplierFormModal } from "@/components/inventory/SupplierFormModal"
+import type { Customer, Supplier, InventoryTabType } from "@/types/inventory"
 
 export default function InventoryPage() {
     const {
@@ -16,7 +17,9 @@ export default function InventoryPage() {
         loading,
         error,
         deleteProduct,
+        createSupplier,
         deleteSupplier,
+        updateSupplier,
         deleteCustomer,
         createCustomer,
         updateCustomer,
@@ -26,6 +29,9 @@ export default function InventoryPage() {
     const [activeTab, setActiveTab] = useState<InventoryTabType>("products")
     const [customerModalOpen, setCustomerModalOpen] = useState(false)
     const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
+    const [supplierModalOpen, setSupplierModalOpen] = useState(false)
+    const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null)
+    const [togglingSupplier, setTogglingSupplier] = useState<string | null>(null)
 
     const handleAddCustomer = () => {
         setEditingCustomer(null)
@@ -52,6 +58,42 @@ export default function InventoryPage() {
         const customer = customers.find((c) => c.id === id)
         if (customer) {
             await updateCustomer(id, { active: !customer.active })
+        }
+    }
+
+    const handleAddSupplier = () => {
+        setEditingSupplier(null)
+        setSupplierModalOpen(true)
+    }
+
+    const handleEditSupplier = (id: string) => {
+        const supplier = suppliers.find((s) => s.id === id)
+        if (supplier) {
+            setEditingSupplier(supplier)
+            setSupplierModalOpen(true)
+        }
+    }
+
+    const handleSaveSupplier = async (data: Partial<Supplier>) => {
+        if (editingSupplier) {
+            return await updateSupplier(editingSupplier.id, data)
+        } else {
+            return await createSupplier(data)
+        }
+    }
+
+    const handleToggleSupplierStatus = async (id: string) => {
+        // Prevent multiple simultaneous toggles
+        if (togglingSupplier) return
+
+        const supplier = suppliers.find((s) => s.id === id)
+        if (supplier) {
+            setTogglingSupplier(id)
+            try {
+                await updateSupplier(id, { active: !supplier.active })
+            } finally {
+                setTogglingSupplier(null)
+            }
         }
     }
 
@@ -91,9 +133,10 @@ export default function InventoryPage() {
                 onDeleteProduct={(id: string) => deleteProduct(id)}
                 onAddProduct={() => console.log("Add product")}
                 onViewSupplier={(id: string) => console.log("View supplier:", id)}
-                onEditSupplier={(id: string) => console.log("Edit supplier:", id)}
+                onEditSupplier={handleEditSupplier}
                 onDeleteSupplier={(id: string) => deleteSupplier(id)}
-                onAddSupplier={() => console.log("Add supplier")}
+                onToggleSupplierStatus={handleToggleSupplierStatus}
+                onAddSupplier={handleAddSupplier}
                 onViewCustomer={(id: string) => console.log("View customer:", id)}
                 onEditCustomer={handleEditCustomer}
                 onDeleteCustomer={(id: string) => deleteCustomer(id)}
@@ -111,6 +154,13 @@ export default function InventoryPage() {
                 isOpen={customerModalOpen}
                 onClose={() => setCustomerModalOpen(false)}
                 onSave={handleSaveCustomer}
+            />
+
+            <SupplierFormModal
+                supplier={editingSupplier}
+                isOpen={supplierModalOpen}
+                onClose={() => setSupplierModalOpen(false)}
+                onSave={handleSaveSupplier}
             />
         </>
     )

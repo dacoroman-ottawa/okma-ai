@@ -36,6 +36,7 @@ export function InventoryView({
   onViewSupplier,
   onEditSupplier,
   onDeleteSupplier,
+  onToggleSupplierStatus,
   onAddSupplier,
   onViewCustomer,
   onEditCustomer,
@@ -164,6 +165,8 @@ export function InventoryView({
             products={products}
             onViewSupplier={onViewSupplier}
             onEditSupplier={onEditSupplier}
+            onDeleteSupplier={onDeleteSupplier}
+            onToggleSupplierStatus={onToggleSupplierStatus}
             onAddSupplier={onAddSupplier}
           />
         )}

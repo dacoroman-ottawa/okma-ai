@@ -101,6 +101,8 @@ export interface SupplierListProps {
   onEditSupplier?: (id: string) => void
   /** Called when user wants to delete a supplier */
   onDeleteSupplier?: (id: string) => void
+  /** Called when user wants to toggle supplier active status */
+  onToggleSupplierStatus?: (id: string) => void
   /** Called when user wants to add a new supplier */
   onAddSupplier?: () => void
 }
@@ -181,6 +183,8 @@ export interface InventoryProps {
   onEditSupplier?: (id: string) => void
   /** Called when user wants to delete a supplier */
   onDeleteSupplier?: (id: string) => void
+  /** Called when user wants to toggle supplier active status */
+  onToggleSupplierStatus?: (id: string) => void
   /** Called when user wants to add a new supplier */
   onAddSupplier?: () => void
   /** Called when user wants to view customer details */
