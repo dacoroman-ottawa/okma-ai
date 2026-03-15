@@ -25,9 +25,9 @@ export default function PeoplePage() {
     const router = useRouter();
 
     return (
-        <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950">
-            {/* Tab Switcher */}
-            <div className="border-b border-slate-200 bg-white px-8 dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex h-full flex-col bg-slate-50 dark:bg-slate-950">
+            {/* Fixed Tab Switcher */}
+            <div className="shrink-0 border-b border-slate-200 bg-white px-8 dark:border-slate-800 dark:bg-slate-900">
                 <nav className="-mb-px flex gap-8">
                     <button
                         onClick={() => handleTabChange("teachers")}
@@ -50,7 +50,8 @@ export default function PeoplePage() {
                 </nav>
             </div>
 
-            <div className="flex-1 overflow-auto bg-slate-50/50 dark:bg-slate-950/50">
+            {/* Content area */}
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                 {activeTab === "teachers" ? (
                     <TeachersList
                         teachers={teachers}
