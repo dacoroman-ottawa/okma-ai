@@ -226,3 +226,118 @@ def test_get_all_attendance():
     response = client.get("/classes/attendance")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
+
+
+def test_credit_refund_when_status_changes_from_present():
+    """Test that credits are refunded when attendance changes from present to absent."""
+    from backend.auth import get_current_user
+    app.dependency_overrides[get_current_user] = lambda: AppUser(id="admin-1", is_admin=True, role=UserRoleEnum.ADMIN)
+
+    # First mark attendance as present (should deduct credits)
+    payload = {
+        "studentId": "stu-1",
+        "date": "2025-02-25",
+        "status": "present"
+    }
+    response = client.post("/classes/cls-1/attendance", json=payload)
+    assert response.status_code == 200
+
+    db = TestingSessionLocal()
+    transactions = db.query(CreditTransaction).filter(CreditTransaction.student_id == "stu-1").all()
+    assert len(transactions) == 1
+    assert transactions[0].credits == -1.0
+    assert transactions[0].type == TransactionTypeEnum.DEDUCTION
+    db.close()
+
+    # Now change to absent (should refund credits)
+    payload["status"] = "absent"
+    response = client.post("/classes/cls-1/attendance", json=payload)
+    assert response.status_code == 200
+
+    db = TestingSessionLocal()
+    transactions = db.query(CreditTransaction).filter(CreditTransaction.student_id == "stu-1").order_by(CreditTransaction.id).all()
+    assert len(transactions) == 2
+    assert transactions[1].credits == 1.0  # Positive = refund
+    assert transactions[1].type == TransactionTypeEnum.ADJUSTMENT
+    db.close()
+
+
+def test_credit_refund_on_update_attendance():
+    """Test that credits are refunded when updating attendance from present to cancelled."""
+    from backend.auth import get_current_user
+    app.dependency_overrides[get_current_user] = lambda: AppUser(id="admin-1", is_admin=True, role=UserRoleEnum.ADMIN)
+
+    # Count existing adjustment transactions
+    db = TestingSessionLocal()
+    initial_adjustments = db.query(CreditTransaction).filter(
+        CreditTransaction.student_id == "stu-1",
+        CreditTransaction.type == TransactionTypeEnum.ADJUSTMENT
+    ).count()
+    db.close()
+
+    # Create attendance as present
+    create_payload = {
+        "classId": "cls-1",
+        "studentId": "stu-1",
+        "date": "2025-02-26",
+        "status": "present"
+    }
+    create_response = client.post("/classes/attendance", json=create_payload)
+    assert create_response.status_code == 200
+    record_id = create_response.json()["id"]
+
+    # Update to cancelled
+    update_payload = {"status": "cancelled"}
+    response = client.put(f"/classes/attendance/{record_id}", json=update_payload)
+    assert response.status_code == 200
+
+    db = TestingSessionLocal()
+    # Check that a new adjustment was created
+    adjustments = db.query(CreditTransaction).filter(
+        CreditTransaction.student_id == "stu-1",
+        CreditTransaction.type == TransactionTypeEnum.ADJUSTMENT,
+        CreditTransaction.credits == 1.0
+    ).all()
+    assert len(adjustments) > initial_adjustments
+    db.close()
+
+
+def test_credit_refund_on_delete_present_attendance():
+    """Test that credits are refunded when deleting a present attendance record."""
+    from backend.auth import get_current_user
+    app.dependency_overrides[get_current_user] = lambda: AppUser(id="admin-1", is_admin=True, role=UserRoleEnum.ADMIN)
+
+    # Count existing adjustment transactions with "deleted" note
+    db = TestingSessionLocal()
+    initial_delete_adjustments = db.query(CreditTransaction).filter(
+        CreditTransaction.student_id == "stu-1",
+        CreditTransaction.type == TransactionTypeEnum.ADJUSTMENT,
+        CreditTransaction.note.like("%deleted%")
+    ).count()
+    db.close()
+
+    # Create attendance as present
+    create_payload = {
+        "classId": "cls-1",
+        "studentId": "stu-1",
+        "date": "2025-02-27",
+        "status": "present"
+    }
+    create_response = client.post("/classes/attendance", json=create_payload)
+    assert create_response.status_code == 200
+    record_id = create_response.json()["id"]
+
+    # Delete the record
+    response = client.delete(f"/classes/attendance/{record_id}")
+    assert response.status_code == 200
+
+    db = TestingSessionLocal()
+    # Check that a new adjustment with "deleted" note was created
+    delete_adjustments = db.query(CreditTransaction).filter(
+        CreditTransaction.student_id == "stu-1",
+        CreditTransaction.type == TransactionTypeEnum.ADJUSTMENT,
+        CreditTransaction.note.like("%deleted%"),
+        CreditTransaction.credits == 1.0
+    ).all()
+    assert len(delete_adjustments) > initial_delete_adjustments
+    db.close()

@@ -15,9 +15,40 @@ from ..auth import get_current_user
 router = APIRouter(prefix="/classes", tags=["classes"])
 
 
-def get_credits_for_status(status: AttendanceStatusEnum) -> int:
-    """Return credits based on attendance status: -1 for present, 0 for all others."""
-    return -1 if status == AttendanceStatusEnum.PRESENT else 0
+def get_credits_for_status(status: AttendanceStatusEnum, duration_minutes: int = 60) -> float:
+    """Return credits based on attendance status, scaled by class duration.
+
+    Credits are based on hours: a 60-minute class = 1 credit, 45-minute = 0.75 credits.
+    Returns negative value for present (credits used), 0 for all other statuses.
+    """
+    if status == AttendanceStatusEnum.PRESENT:
+        return -(duration_minutes / 60.0)
+    return 0
+
+
+def create_credit_deduction(db: Session, student_id: str, enrollment_id: str, credits: float) -> CreditTransaction:
+    """Create a credit deduction transaction."""
+    return CreditTransaction(
+        id=f"trx-{uuid.uuid4().hex[:8]}",
+        student_id=student_id,
+        enrollment_id=enrollment_id,
+        credits=-credits,
+        type=TransactionTypeEnum.DEDUCTION,
+        amount=0
+    )
+
+
+def create_credit_refund(db: Session, student_id: str, enrollment_id: str, credits: float) -> CreditTransaction:
+    """Create a credit refund (adjustment) transaction to restore credits."""
+    return CreditTransaction(
+        id=f"trx-{uuid.uuid4().hex[:8]}",
+        student_id=student_id,
+        enrollment_id=enrollment_id,
+        credits=credits,
+        type=TransactionTypeEnum.ADJUSTMENT,
+        amount=0,
+        note="Credit refund: attendance status changed from present"
+    )
 
 @router.get("/")
 async def get_classes(
@@ -178,7 +209,7 @@ async def mark_attendance(
     if existing:
         was_present = existing.status == AttendanceStatusEnum.PRESENT
         existing.status = status
-        existing.credits = get_credits_for_status(status)
+        existing.credits = get_credits_for_status(status, cls.duration)
         if time_str is not None:
             existing.time = time_str
         if remarks is not None:
@@ -191,33 +222,29 @@ async def mark_attendance(
             date=record_date,
             status=status,
             time=time_str or cls.start_time,
+            duration=cls.duration,
             remarks=remarks,
-            credits=get_credits_for_status(status)
+            credits=get_credits_for_status(status, cls.duration)
         )
         db.add(new_record)
 
-    # CREDIT DEDUCTION LOGIC - only when changing TO present
-    if status == AttendanceStatusEnum.PRESENT and not was_present:
-        # Find enrollment for this student and instrument to apply deduction
-        enrollment = db.query(Enrollment).filter(
-            Enrollment.student_id == student_id,
-            Enrollment.teacher_id == cls.teacher_id,
-            Enrollment.instrument_id == cls.instrument_id
-        ).first()
+    # CREDIT LOGIC - handle both deductions and refunds
+    enrollment = db.query(Enrollment).filter(
+        Enrollment.student_id == student_id,
+        Enrollment.teacher_id == cls.teacher_id,
+        Enrollment.instrument_id == cls.instrument_id
+    ).first()
 
-        if enrollment:
-            # Create a deduction transaction
-            credits_to_deduct = cls.duration / 60.0
+    if enrollment:
+        credits_amount = cls.duration / 60.0
 
-            deduction = CreditTransaction(
-                id=f"trx-{uuid.uuid4().hex[:8]}",
-                student_id=student_id,
-                enrollment_id=enrollment.id,
-                credits=-credits_to_deduct,
-                type=TransactionTypeEnum.DEDUCTION,
-                amount=0 # Amount is 0 for deductions as it's pre-paid
-            )
-            db.add(deduction)
+        # Deduct credits when changing TO present
+        if status == AttendanceStatusEnum.PRESENT and not was_present:
+            db.add(create_credit_deduction(db, student_id, enrollment.id, credits_amount))
+
+        # Refund credits when changing FROM present
+        elif was_present and status != AttendanceStatusEnum.PRESENT:
+            db.add(create_credit_refund(db, student_id, enrollment.id, credits_amount))
 
     db.commit()
     return {"status": "success"}
@@ -254,6 +281,7 @@ async def get_all_attendance(
             "date": r.date.isoformat(),
             "status": r.status.value if r.status else "scheduled",
             "time": r.time,
+            "duration": r.duration,
             "remarks": r.remarks,
             "credits": r.credits if r.credits is not None else 0
         } for r in records
@@ -308,6 +336,7 @@ async def generate_week_attendance(
                     date=class_date,
                     status=AttendanceStatusEnum.SCHEDULED,
                     time=cls.start_time,
+                    duration=cls.duration,
                     credits=0
                 )
                 db.add(new_record)
@@ -358,8 +387,9 @@ async def create_attendance(
         date=record_date,
         status=status,
         time=time_str or cls.start_time,
+        duration=cls.duration,
         remarks=remarks,
-        credits=get_credits_for_status(status)
+        credits=get_credits_for_status(status, cls.duration)
     )
     db.add(new_record)
 
@@ -373,15 +403,7 @@ async def create_attendance(
 
         if enrollment:
             credits_to_deduct = cls.duration / 60.0
-            deduction = CreditTransaction(
-                id=f"trx-{uuid.uuid4().hex[:8]}",
-                student_id=student_id,
-                enrollment_id=enrollment.id,
-                credits=-credits_to_deduct,
-                type=TransactionTypeEnum.DEDUCTION,
-                amount=0
-            )
-            db.add(deduction)
+            db.add(create_credit_deduction(db, student_id, enrollment.id, credits_to_deduct))
 
     db.commit()
     db.refresh(new_record)
@@ -393,6 +415,7 @@ async def create_attendance(
         "date": new_record.date.isoformat(),
         "status": new_record.status.value,
         "time": new_record.time,
+        "duration": new_record.duration,
         "remarks": new_record.remarks,
         "credits": new_record.credits
     }
@@ -426,29 +449,27 @@ async def update_attendance(
         record.time = data["time"]
     if "status" in data:
         record.status = AttendanceStatusEnum(data["status"])
-        record.credits = get_credits_for_status(record.status)
+        record.credits = get_credits_for_status(record.status, cls.duration)
     if "remarks" in data:
         record.remarks = data["remarks"]
 
-    # Credit deduction if changing to present
-    if record.status == AttendanceStatusEnum.PRESENT and not was_present:
-        enrollment = db.query(Enrollment).filter(
-            Enrollment.student_id == record.student_id,
-            Enrollment.teacher_id == cls.teacher_id,
-            Enrollment.instrument_id == cls.instrument_id
-        ).first()
+    # Credit logic - handle both deductions and refunds
+    enrollment = db.query(Enrollment).filter(
+        Enrollment.student_id == record.student_id,
+        Enrollment.teacher_id == cls.teacher_id,
+        Enrollment.instrument_id == cls.instrument_id
+    ).first()
 
-        if enrollment:
-            credits_to_deduct = cls.duration / 60.0
-            deduction = CreditTransaction(
-                id=f"trx-{uuid.uuid4().hex[:8]}",
-                student_id=record.student_id,
-                enrollment_id=enrollment.id,
-                credits=-credits_to_deduct,
-                type=TransactionTypeEnum.DEDUCTION,
-                amount=0
-            )
-            db.add(deduction)
+    if enrollment:
+        credits_amount = cls.duration / 60.0
+
+        # Deduct credits when changing TO present
+        if record.status == AttendanceStatusEnum.PRESENT and not was_present:
+            db.add(create_credit_deduction(db, record.student_id, enrollment.id, credits_amount))
+
+        # Refund credits when changing FROM present
+        elif was_present and record.status != AttendanceStatusEnum.PRESENT:
+            db.add(create_credit_refund(db, record.student_id, enrollment.id, credits_amount))
 
     db.commit()
     db.refresh(record)
@@ -460,6 +481,7 @@ async def update_attendance(
         "date": record.date.isoformat(),
         "status": record.status.value,
         "time": record.time,
+        "duration": record.duration,
         "remarks": record.remarks,
         "credits": record.credits
     }
@@ -482,6 +504,20 @@ async def delete_attendance(
     if not current_user.is_admin:
         if not current_user.teacher or current_user.teacher.id != cls.teacher_id:
             raise HTTPException(status_code=403, detail="Not authorized")
+
+    # Refund credits if deleting a present attendance record
+    if record.status == AttendanceStatusEnum.PRESENT:
+        enrollment = db.query(Enrollment).filter(
+            Enrollment.student_id == record.student_id,
+            Enrollment.teacher_id == cls.teacher_id,
+            Enrollment.instrument_id == cls.instrument_id
+        ).first()
+
+        if enrollment:
+            credits_amount = cls.duration / 60.0
+            refund = create_credit_refund(db, record.student_id, enrollment.id, credits_amount)
+            refund.note = "Credit refund: attendance record deleted"
+            db.add(refund)
 
     db.delete(record)
     db.commit()

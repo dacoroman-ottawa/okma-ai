@@ -76,16 +76,17 @@ export function AttendanceListInline({
     })
 
     return (
-        <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <div className="overflow-auto rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900" style={{ maxHeight: 'calc(100vh - 280px)' }}>
             {/* Table header */}
-            <div className="hidden grid-cols-12 gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400 sm:grid">
+            <div className="sticky top-0 z-10 hidden grid-cols-12 gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400 sm:grid">
                 <div className="col-span-2">Date / Time</div>
                 <div className="col-span-2">Instrument</div>
                 <div className="col-span-2">Teacher</div>
                 <div className="col-span-2">Student</div>
+                <div className="col-span-1 text-center">Duration</div>
                 <div className="col-span-1">Status</div>
                 <div className="col-span-1 text-center">Credits</div>
-                <div className="col-span-2">Remarks</div>
+                <div className="col-span-1">Remarks</div>
             </div>
 
             {/* Table body */}
@@ -137,6 +138,11 @@ export function AttendanceListInline({
                                 </span>
                             </div>
 
+                            {/* Duration */}
+                            <div className="col-span-1 text-center text-sm text-slate-700 dark:text-slate-300">
+                                {record.duration ? `${record.duration}m` : '-'}
+                            </div>
+
                             {/* Status */}
                             <div className="col-span-1" onClick={(e) => e.stopPropagation()}>
                                 <select
@@ -160,7 +166,7 @@ export function AttendanceListInline({
                             </div>
 
                             {/* Remarks */}
-                            <div className="col-span-2 flex items-center justify-between">
+                            <div className="col-span-1 flex items-center justify-between">
                                 <span className="truncate text-sm text-slate-500 dark:text-slate-400">
                                     {record.remarks || '-'}
                                 </span>

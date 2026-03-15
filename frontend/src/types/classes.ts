@@ -35,6 +35,7 @@ export interface AttendanceRecord {
     date: string
     status: AttendanceStatus
     time: string | null
+    duration: number | null
     remarks: string | null
     credits?: number
 }

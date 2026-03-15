@@ -50,9 +50,9 @@ export function ClassesList({
     })
 
     return (
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+        <div className="overflow-auto rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900" style={{ maxHeight: 'calc(100vh - 220px)' }}>
             {/* Table header */}
-            <div className="hidden grid-cols-12 gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400 sm:grid">
+            <div className="sticky top-0 z-10 hidden grid-cols-12 gap-4 border-b border-slate-200 bg-slate-50 px-4 py-3 text-xs font-medium uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:bg-slate-800/50 dark:text-slate-400 sm:grid">
                 <div className="col-span-2">Day / Time</div>
                 <div className="col-span-2">Instrument</div>
                 <div className="col-span-2">Teacher</div>

@@ -96,8 +96,14 @@ export function AttendanceList({
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
                             Student
                         </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            Duration
+                        </th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
                             Status
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                            Credits
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
                             Remarks
@@ -126,6 +132,9 @@ export function AttendanceList({
                                 <td className="whitespace-nowrap px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
                                     {getStudentName(record.studentId)}
                                 </td>
+                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-slate-700 dark:text-slate-300">
+                                    {record.duration ? `${record.duration} min` : '-'}
+                                </td>
                                 <td className="whitespace-nowrap px-4 py-3 text-sm" onClick={(e) => e.stopPropagation()}>
                                     <select
                                         value={record.status}
@@ -138,6 +147,11 @@ export function AttendanceList({
                                             </option>
                                         ))}
                                     </select>
+                                </td>
+                                <td className={`whitespace-nowrap px-4 py-3 text-right text-sm ${record.status === 'present' ? 'font-medium text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>
+                                    {record.status === 'present' && record.duration
+                                        ? (-(record.duration / 60)).toFixed(2)
+                                        : '0.00'}
                                 </td>
                                 <td className="max-w-[200px] truncate px-4 py-3 text-sm text-slate-500 dark:text-slate-400">
                                     {record.remarks || '-'}

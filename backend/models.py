@@ -322,8 +322,9 @@ class AttendanceRecord(Base):
     date = Column(Date, nullable=False)
     status = Column(Enum(AttendanceStatusEnum), default=AttendanceStatusEnum.SCHEDULED)
     time = Column(String, nullable=True)
+    duration = Column(Integer, nullable=True)
     remarks = Column(String, nullable=True)
-    credits = Column(Integer, default=0)
+    credits = Column(Float, default=0)
 
     class_ = relationship("Class")
     student = relationship("Student")
