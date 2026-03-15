@@ -210,14 +210,15 @@ class Supplier(Base):
 class Customer(Base):
     __tablename__ = "customers"
     __table_args__ = {'extend_existing': True}
-    id = Column(String, primary_key=True) 
+    id = Column(String, primary_key=True)
     name = Column(String, nullable=False)
     email = Column(String)
     phone = Column(String)
     address = Column(String)
     notes = Column(String)
+    active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     rentals = relationship("Rental", back_populates="customer")
     sales = relationship("Sale", back_populates="customer")
 

@@ -6,16 +6,14 @@ import {
   Truck,
   Users,
 } from 'lucide-react'
-import type { InventoryProps, Rental, Product } from '@/types/inventory'
+import type { InventoryProps, InventoryTabType } from '@/types/inventory'
 import { ProductsTab } from './ProductsTab'
 import { RentalsTab } from './RentalsTab'
 import { SalesTab } from './SalesTab'
 import { SuppliersTab } from './SuppliersTab'
 import { CustomersTab } from './CustomersTab'
 
-type TabType = 'products' | 'rentals' | 'sales' | 'suppliers' | 'customers'
-
-const tabs: { id: TabType; label: string; icon: typeof Package }[] = [
+const tabs: { id: InventoryTabType; label: string; icon: typeof Package }[] = [
   { id: 'products', label: 'Products', icon: Package },
   { id: 'rentals', label: 'Rentals', icon: Clock },
   { id: 'sales', label: 'Sales', icon: ShoppingBag },
@@ -29,6 +27,8 @@ export function InventoryView({
   customers,
   rentals,
   sales,
+  activeTab: controlledActiveTab,
+  onTabChange,
   onViewProduct,
   onEditProduct,
   onDeleteProduct,
@@ -40,6 +40,7 @@ export function InventoryView({
   onViewCustomer,
   onEditCustomer,
   onDeleteCustomer,
+  onToggleCustomerStatus,
   onAddCustomer,
   onViewRental,
   onReturnRental,
@@ -47,7 +48,17 @@ export function InventoryView({
   onViewSale,
   onRecordSale,
 }: InventoryProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('products')
+  const [internalActiveTab, setInternalActiveTab] = useState<InventoryTabType>('products')
+
+  // Use controlled or uncontrolled mode
+  const activeTab = controlledActiveTab ?? internalActiveTab
+  const setActiveTab = (tab: InventoryTabType) => {
+    if (onTabChange) {
+      onTabChange(tab)
+    } else {
+      setInternalActiveTab(tab)
+    }
+  }
 
   // Calculate badge counts
   const activeRentalsCount = rentals.filter(
@@ -163,6 +174,8 @@ export function InventoryView({
             rentals={rentals}
             onViewCustomer={onViewCustomer}
             onEditCustomer={onEditCustomer}
+            onDeleteCustomer={onDeleteCustomer}
+            onToggleCustomerStatus={onToggleCustomerStatus}
             onAddCustomer={onAddCustomer}
           />
         )}

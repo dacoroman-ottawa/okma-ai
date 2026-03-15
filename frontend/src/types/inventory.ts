@@ -27,6 +27,7 @@ export interface Customer {
   phone: string
   address: string
   notes: string | null
+  active: boolean
 }
 
 export interface Product {
@@ -115,6 +116,8 @@ export interface CustomerListProps {
   onEditCustomer?: (id: string) => void
   /** Called when user wants to delete a customer */
   onDeleteCustomer?: (id: string) => void
+  /** Called when user wants to toggle customer active status */
+  onToggleCustomerStatus?: (id: string) => void
   /** Called when user wants to add a new customer */
   onAddCustomer?: () => void
 }
@@ -147,6 +150,8 @@ export interface SalesListProps {
   onRecordSale?: () => void
 }
 
+export type InventoryTabType = 'products' | 'rentals' | 'sales' | 'suppliers' | 'customers'
+
 export interface InventoryProps {
   /** All products in the catalog */
   products: Product[]
@@ -158,6 +163,10 @@ export interface InventoryProps {
   rentals: Rental[]
   /** All sales */
   sales: Sale[]
+  /** Controlled active tab */
+  activeTab?: InventoryTabType
+  /** Called when tab changes */
+  onTabChange?: (tab: InventoryTabType) => void
   /** Called when user wants to view product details */
   onViewProduct?: (id: string) => void
   /** Called when user wants to edit a product */
@@ -180,6 +189,8 @@ export interface InventoryProps {
   onEditCustomer?: (id: string) => void
   /** Called when user wants to delete a customer */
   onDeleteCustomer?: (id: string) => void
+  /** Called when user wants to toggle customer active status */
+  onToggleCustomerStatus?: (id: string) => void
   /** Called when user wants to add a new customer */
   onAddCustomer?: () => void
   /** Called when user wants to view rental details */

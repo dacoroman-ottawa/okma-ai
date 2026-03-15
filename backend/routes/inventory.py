@@ -121,7 +121,8 @@ async def create_customer(
         email=customer_data["email"],
         phone=customer_data["phone"],
         address=customer_data["address"],
-        notes=customer_data.get("notes")
+        notes=customer_data.get("notes"),
+        active=customer_data.get("active", True)
     )
     
     db.add(customer)

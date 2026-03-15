@@ -1,12 +1,15 @@
-import { useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Plus,
   Users,
   Mail,
   Phone,
   MapPin,
-  ChevronRight,
   Clock,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  Power,
 } from 'lucide-react'
 import type { Customer, Rental } from '@/types/inventory'
 
@@ -15,6 +18,8 @@ interface CustomersTabProps {
   rentals: Rental[]
   onViewCustomer?: (id: string) => void
   onEditCustomer?: (id: string) => void
+  onDeleteCustomer?: (id: string) => void
+  onToggleCustomerStatus?: (id: string) => void
   onAddCustomer?: () => void
 }
 
@@ -23,8 +28,12 @@ export function CustomersTab({
   rentals,
   onViewCustomer,
   onEditCustomer,
+  onDeleteCustomer,
+  onToggleCustomerStatus,
   onAddCustomer,
 }: CustomersTabProps) {
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+
   const getActiveRentalsCount = (customerId: string) =>
     rentals.filter(
       (r) =>
@@ -33,15 +42,22 @@ export function CustomersTab({
     ).length
 
   const sortedCustomers = useMemo(() => {
-    return [...customers].sort((a, b) => a.name.localeCompare(b.name))
+    return [...customers].sort((a, b) => {
+      // Active first, then by name
+      if (a.active !== b.active) return a.active ? -1 : 1
+      return a.name.localeCompare(b.name)
+    })
   }, [customers])
+
+  const activeCount = customers.filter((c) => c.active).length
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-slate-500 dark:text-slate-400">
-          {customers.length} customer{customers.length !== 1 ? 's' : ''}
+          {activeCount} active customer{activeCount !== 1 ? 's' : ''}
+          {customers.length > activeCount && ` (${customers.length - activeCount} inactive)`}
         </p>
 
         <button
@@ -68,46 +84,114 @@ export function CustomersTab({
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {sortedCustomers.map((customer) => {
             const activeRentals = getActiveRentalsCount(customer.id)
+            const isMenuOpen = openMenuId === customer.id
 
             return (
               <div
                 key={customer.id}
                 onClick={() => onViewCustomer?.(customer.id)}
-                className="cursor-pointer rounded-xl border border-slate-200 bg-white p-5 transition-all hover:shadow-md dark:border-slate-700 dark:bg-slate-900"
+                className={`relative cursor-pointer rounded-xl border bg-white p-5 transition-all hover:shadow-md dark:bg-slate-900 ${
+                  customer.active
+                    ? 'border-slate-200 dark:border-slate-700'
+                    : 'border-slate-200 opacity-70 dark:border-slate-700'
+                }`}
               >
+                {/* Header with avatar and menu */}
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-sm font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 text-sm font-semibold text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                       {customer.name
                         .split(' ')
                         .map((n) => n[0])
                         .join('')
-                        .slice(0, 2)}
+                        .slice(0, 2)
+                        .toUpperCase()}
                     </div>
                     <div>
-                      <h3 className="font-semibold text-slate-900 dark:text-slate-100">
-                        {customer.name}
-                      </h3>
-                      {customer.notes && (
-                        <p className="text-xs text-slate-400 dark:text-slate-500">
-                          {customer.notes}
-                        </p>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-slate-900 dark:text-slate-100">
+                          {customer.name}
+                        </h3>
+                        {activeRentals > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
+                            <Clock className="h-3 w-3" />
+                            {activeRentals}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
+                        <Mail className="h-3.5 w-3.5" />
+                        <span className="truncate">{customer.email}</span>
+                      </div>
                     </div>
                   </div>
-                  {activeRentals > 0 && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400">
-                      <Clock className="h-3 w-3" />
-                      {activeRentals}
-                    </span>
-                  )}
+
+                  {/* Menu button */}
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setOpenMenuId(isMenuOpen ? null : customer.id)
+                      }}
+                      className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+
+                    {isMenuOpen && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-10"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setOpenMenuId(null)
+                          }}
+                        />
+                        <div className="absolute right-0 z-20 mt-1 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setOpenMenuId(null)
+                              onEditCustomer?.(customer.id)
+                            }}
+                            className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                          >
+                            <Pencil className="h-4 w-4" />
+                            Edit Customer
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setOpenMenuId(null)
+                              onToggleCustomerStatus?.(customer.id)
+                            }}
+                            className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                          >
+                            <Power className="h-4 w-4" />
+                            {customer.active ? 'Deactivate Customer' : 'Activate Customer'}
+                          </button>
+                          <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setOpenMenuId(null)
+                              if (confirm(`Delete ${customer.name}?`)) {
+                                onDeleteCustomer?.(customer.id)
+                              }
+                            }}
+                            className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Delete Customer
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
 
+                {/* Contact info */}
                 <div className="mt-4 space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                    <Mail className="h-4 w-4 text-slate-400" />
-                    <span className="truncate">{customer.email}</span>
-                  </div>
                   <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
                     <Phone className="h-4 w-4 text-slate-400" />
                     <span>{customer.phone}</span>
@@ -118,8 +202,27 @@ export function CustomersTab({
                   </div>
                 </div>
 
-                <div className="mt-4 flex items-center justify-end border-t border-slate-100 pt-4 dark:border-slate-800">
-                  <ChevronRight className="h-4 w-4 text-slate-400" />
+                {/* Status in footer */}
+                <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4 dark:border-slate-800">
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+                      customer.active
+                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                        : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                    }`}
+                  >
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        customer.active ? 'bg-emerald-500' : 'bg-slate-400'
+                      }`}
+                    />
+                    {customer.active ? 'Active' : 'Inactive'}
+                  </span>
+                  {customer.notes && (
+                    <p className="text-xs text-slate-400 dark:text-slate-500 truncate max-w-[50%]">
+                      {customer.notes}
+                    </p>
+                  )}
                 </div>
               </div>
             )
