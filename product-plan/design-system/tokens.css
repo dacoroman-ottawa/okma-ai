@@ -1,0 +1,15 @@
+/* Design Tokens for KanataMusicAcademy */
+
+:root {
+  /* Colors - Using Tailwind color names */
+  --color-primary: indigo;
+  --color-secondary: amber;
+  --color-neutral: slate;
+
+  /* Typography */
+  --font-heading: 'DM Sans', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* Dark mode support is built into Tailwind with dark: prefix */
