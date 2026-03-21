@@ -338,20 +338,60 @@ export function useInventory() {
     }
 
     // Sale operations
-    const recordSale = async (data: Partial<Sale>) => {
+    const createSale = async (data: Partial<Sale>) => {
         try {
             const headers = await getAuthHeaders()
+            const body = toSnake(data)
             const res = await fetch("http://localhost:8000/inventory/sales", {
                 method: "POST",
                 headers,
-                body: JSON.stringify(toSnake(data)),
+                body: JSON.stringify(body),
             })
-            if (!res.ok) throw new Error("Failed to record sale")
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}))
+                console.error("Create sale failed:", res.status, errorData)
+                throw new Error(errorData.detail || "Failed to create sale")
+            }
             await fetchData()
             return true
         } catch (err) {
-            console.error("Record sale error:", err)
-            setError("Failed to record sale")
+            console.error("Create sale error:", err)
+            setError(err instanceof Error ? err.message : "Failed to create sale")
+            return false
+        }
+    }
+
+    const updateSale = async (id: string, data: Partial<Sale>) => {
+        try {
+            const headers = await getAuthHeaders()
+            const res = await fetch(`http://localhost:8000/inventory/sales/${id}`, {
+                method: "PUT",
+                headers,
+                body: JSON.stringify(toSnake(data)),
+            })
+            if (!res.ok) throw new Error("Failed to update sale")
+            await fetchData()
+            return true
+        } catch (err) {
+            console.error("Update sale error:", err)
+            setError("Failed to update sale")
+            return false
+        }
+    }
+
+    const deleteSale = async (id: string) => {
+        try {
+            const headers = await getAuthHeaders()
+            const res = await fetch(`http://localhost:8000/inventory/sales/${id}`, {
+                method: "DELETE",
+                headers,
+            })
+            if (!res.ok) throw new Error("Failed to delete sale")
+            await fetchData()
+            return true
+        } catch (err) {
+            console.error("Delete sale error:", err)
+            setError("Failed to delete sale")
             return false
         }
     }
@@ -383,6 +423,8 @@ export function useInventory() {
         deleteRental,
         returnRental,
         // Sale operations
-        recordSale,
+        createSale,
+        updateSale,
+        deleteSale,
     }
 }

@@ -50,6 +50,8 @@ export function InventoryView({
   onReturnRental,
   onCreateRental,
   onViewSale,
+  onEditSale,
+  onDeleteSale,
   onRecordSale,
 }: InventoryProps) {
   const [internalActiveTab, setInternalActiveTab] = useState<InventoryTabType>('products')
@@ -168,6 +170,8 @@ export function InventoryView({
               products={products}
               customers={customers}
               onViewSale={onViewSale}
+              onEditSale={onEditSale}
+              onDeleteSale={onDeleteSale}
               onRecordSale={onRecordSale}
             />
           )}

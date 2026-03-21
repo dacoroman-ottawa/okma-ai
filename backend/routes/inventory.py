@@ -464,31 +464,90 @@ async def record_sale(
     """Record a new sale (admin only)"""
     if not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Only admins can record sales")
-    
+
+    # Validate required fields
+    required_fields = ["product_id", "customer_id", "date", "quantity", "unit_price", "total_amount", "payment_method"]
+    for field in required_fields:
+        if field not in sale_data:
+            raise HTTPException(status_code=400, detail=f"Missing required field: {field}")
+
     # Check stock availability
     product = db.query(Product).filter(Product.id == sale_data["product_id"]).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-    
+
     quantity = sale_data["quantity"]
     if product.stock_quantity < quantity:
         raise HTTPException(status_code=400, detail="Insufficient stock for this sale")
-    
-    sale = Sale(
-        id=sale_data.get("id", f"sale-{uuid.uuid4().hex[:8]}"),
-        product_id=sale_data["product_id"],
-        customer_id=sale_data["customer_id"],
-        date=datetime.fromisoformat(sale_data["date"]).date(),
-        quantity=quantity,
-        unit_price=sale_data["unit_price"],
-        total_amount=sale_data["total_amount"],
-        payment_method=sale_data["payment_method"]
-    )
-    
+
+    try:
+        sale = Sale(
+            id=sale_data.get("id", f"sale-{uuid.uuid4().hex[:8]}"),
+            product_id=sale_data["product_id"],
+            customer_id=sale_data["customer_id"],
+            date=datetime.fromisoformat(sale_data["date"]).date(),
+            quantity=quantity,
+            unit_price=sale_data["unit_price"],
+            total_amount=sale_data["total_amount"],
+            payment_method=sale_data["payment_method"]
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid data format: {str(e)}")
+
     # Deduct stock
     product.stock_quantity -= quantity
-    
+
     db.add(sale)
     db.commit()
     db.refresh(sale)
     return sale
+
+@router.put("/sales/{sale_id}")
+async def update_sale(
+    sale_id: str,
+    sale_data: dict,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """Update a sale (admin only)"""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only admins can update sales")
+
+    sale = db.query(Sale).filter(Sale.id == sale_id).first()
+    if not sale:
+        raise HTTPException(status_code=404, detail="Sale not found")
+
+    for key, value in sale_data.items():
+        if key in ("id", "product_id", "customer_id"):  # Skip immutable fields
+            continue
+        if key == "date" and value:
+            setattr(sale, key, datetime.fromisoformat(value).date())
+        elif hasattr(sale, key):
+            setattr(sale, key, value)
+
+    db.commit()
+    db.refresh(sale)
+    return sale
+
+@router.delete("/sales/{sale_id}")
+async def delete_sale(
+    sale_id: str,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """Delete a sale (admin only)"""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only admins can delete sales")
+
+    sale = db.query(Sale).filter(Sale.id == sale_id).first()
+    if not sale:
+        raise HTTPException(status_code=404, detail="Sale not found")
+
+    # Restore stock
+    product = db.query(Product).filter(Product.id == sale.product_id).first()
+    if product:
+        product.stock_quantity += sale.quantity
+
+    db.delete(sale)
+    db.commit()
+    return {"message": "Sale deleted"}

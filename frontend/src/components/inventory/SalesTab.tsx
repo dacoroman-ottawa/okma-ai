@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Plus, ShoppingBag, ChevronRight, Search } from 'lucide-react'
+import { Plus, ShoppingBag, Search, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import type { Sale, Product, Customer } from '@/types/inventory'
 
 interface SalesTabProps {
@@ -7,6 +7,8 @@ interface SalesTabProps {
   products: Product[]
   customers: Customer[]
   onViewSale?: (id: string) => void
+  onEditSale?: (id: string) => void
+  onDeleteSale?: (id: string) => void
   onRecordSale?: () => void
 }
 
@@ -15,9 +17,12 @@ export function SalesTab({
   products,
   customers,
   onViewSale,
+  onEditSale,
+  onDeleteSale,
   onRecordSale,
 }: SalesTabProps) {
   const [searchQuery, setSearchQuery] = useState('')
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
   const getProductName = (id: string) =>
     products.find((p) => p.id === id)?.name ?? 'Unknown Product'
@@ -100,7 +105,7 @@ export function SalesTab({
             className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md active:scale-[0.98]"
           >
             <Plus className="h-4 w-4" />
-            Record Sale
+            New Sale
           </button>
         </div>
       </div>
@@ -146,75 +151,190 @@ export function SalesTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                {filteredSales.map((sale) => (
-                  <tr
-                    key={sale.id}
-                    onClick={() => onViewSale?.(sale.id)}
-                    className="cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                  >
-                    <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
-                      {formatDate(sale.date)}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4 font-medium text-slate-900 dark:text-slate-100">
-                      {getProductName(sale.productId)}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
-                      {getCustomerName(sale.customerId)}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-center text-sm text-slate-600 dark:text-slate-400">
-                      {sale.quantity}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4">
-                      <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                        {sale.paymentMethod}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4 text-right font-medium text-slate-900 dark:text-slate-100">
-                      {formatCurrency(sale.totalAmount)}
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-4">
-                      <ChevronRight className="h-4 w-4 text-slate-400" />
-                    </td>
-                  </tr>
-                ))}
+                {filteredSales.map((sale, index) => {
+                  const isMenuOpen = openMenuId === sale.id
+                  const isNearBottom = index >= filteredSales.length - 2
+
+                  return (
+                    <tr
+                      key={sale.id}
+                      onClick={() => onViewSale?.(sale.id)}
+                      className="cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                    >
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
+                        {formatDate(sale.date)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 font-medium text-slate-900 dark:text-slate-100">
+                        {getProductName(sale.productId)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
+                        {getCustomerName(sale.customerId)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-center text-sm text-slate-600 dark:text-slate-400">
+                        {sale.quantity}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4">
+                        <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                          {sale.paymentMethod}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-right font-medium text-slate-900 dark:text-slate-100">
+                        {formatCurrency(sale.totalAmount)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4">
+                        <div className="relative">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setOpenMenuId(isMenuOpen ? null : sale.id)
+                            }}
+                            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+
+                          {isMenuOpen && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-10"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setOpenMenuId(null)
+                                }}
+                              />
+                              <div className={`absolute right-0 z-20 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900 ${
+                                isNearBottom ? 'bottom-full mb-1' : 'top-full mt-1'
+                              }`}>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setOpenMenuId(null)
+                                    onEditSale?.(sale.id)
+                                  }}
+                                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                  Edit Sale
+                                </button>
+                                <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setOpenMenuId(null)
+                                    if (confirm(`Delete this sale for ${getProductName(sale.productId)}?`)) {
+                                      onDeleteSale?.(sale.id)
+                                    }
+                                  }}
+                                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Delete Sale
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
 
           {/* Mobile list */}
           <div className="divide-y divide-slate-200 md:hidden dark:divide-slate-700">
-            {filteredSales.map((sale) => (
-              <div
-                key={sale.id}
-                onClick={() => onViewSale?.(sale.id)}
-                className="cursor-pointer p-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-slate-900 dark:text-slate-100">
-                      {getProductName(sale.productId)}
-                    </p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
-                      {getCustomerName(sale.customerId)}
-                    </p>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
-                      <span>{formatDate(sale.date)}</span>
-                      <span>&middot;</span>
-                      <span>{sale.paymentMethod}</span>
-                      {sale.quantity > 1 && (
-                        <>
-                          <span>&middot;</span>
-                          <span>Qty: {sale.quantity}</span>
-                        </>
-                      )}
+            {filteredSales.map((sale, index) => {
+              const isMenuOpen = openMenuId === sale.id
+              const isNearBottom = index >= filteredSales.length - 2
+
+              return (
+                <div
+                  key={sale.id}
+                  onClick={() => onViewSale?.(sale.id)}
+                  className="cursor-pointer p-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-slate-900 dark:text-slate-100">
+                        {getProductName(sale.productId)}
+                      </p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        {getCustomerName(sale.customerId)}
+                      </p>
+                      <div className="mt-1 flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+                        <span>{formatDate(sale.date)}</span>
+                        <span>&middot;</span>
+                        <span>{sale.paymentMethod}</span>
+                        {sale.quantity > 1 && (
+                          <>
+                            <span>&middot;</span>
+                            <span>Qty: {sale.quantity}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <p className="font-medium text-slate-900 dark:text-slate-100">
+                        {formatCurrency(sale.totalAmount)}
+                      </p>
+                      <div className="relative">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setOpenMenuId(isMenuOpen ? null : sale.id)
+                          }}
+                          className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+
+                        {isMenuOpen && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-10"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setOpenMenuId(null)
+                              }}
+                            />
+                            <div className={`absolute right-0 z-20 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900 ${
+                              isNearBottom ? 'bottom-full mb-1' : 'top-full mt-1'
+                            }`}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setOpenMenuId(null)
+                                  onEditSale?.(sale.id)
+                                }}
+                                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                              >
+                                <Pencil className="h-4 w-4" />
+                                Edit Sale
+                              </button>
+                              <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setOpenMenuId(null)
+                                  if (confirm(`Delete this sale for ${getProductName(sale.productId)}?`)) {
+                                    onDeleteSale?.(sale.id)
+                                  }
+                                }}
+                                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete Sale
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <p className="font-medium text-slate-900 dark:text-slate-100">
-                    {formatCurrency(sale.totalAmount)}
-                  </p>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
         )}

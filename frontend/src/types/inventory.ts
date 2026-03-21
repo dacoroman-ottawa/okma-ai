@@ -213,6 +213,10 @@ export interface InventoryProps {
   onCreateRental?: () => void
   /** Called when user wants to view sale details */
   onViewSale?: (id: string) => void
+  /** Called when user wants to edit a sale */
+  onEditSale?: (id: string) => void
+  /** Called when user wants to delete a sale */
+  onDeleteSale?: (id: string) => void
   /** Called when user wants to record a new sale */
   onRecordSale?: () => void
 }

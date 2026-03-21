@@ -7,7 +7,8 @@ import { CustomerFormModal } from "@/components/inventory/CustomerFormModal"
 import { SupplierFormModal } from "@/components/inventory/SupplierFormModal"
 import { ProductFormModal } from "@/components/inventory/ProductFormModal"
 import { RentalFormModal } from "@/components/inventory/RentalFormModal"
-import type { Customer, Supplier, Product, Rental, InventoryTabType } from "@/types/inventory"
+import { SaleFormModal } from "@/components/inventory/SaleFormModal"
+import type { Customer, Supplier, Product, Rental, Sale, InventoryTabType } from "@/types/inventory"
 
 export default function InventoryPage() {
     const {
@@ -31,6 +32,9 @@ export default function InventoryPage() {
         returnRental,
         updateRental,
         deleteRental,
+        createSale,
+        updateSale,
+        deleteSale,
     } = useInventory()
 
     const [activeTab, setActiveTab] = useState<InventoryTabType>("products")
@@ -44,6 +48,8 @@ export default function InventoryPage() {
     const [togglingProduct, setTogglingProduct] = useState<string | null>(null)
     const [rentalModalOpen, setRentalModalOpen] = useState(false)
     const [editingRental, setEditingRental] = useState<Rental | null>(null)
+    const [saleModalOpen, setSaleModalOpen] = useState(false)
+    const [editingSale, setEditingSale] = useState<Sale | null>(null)
 
     const handleAddCustomer = () => {
         setEditingCustomer(null)
@@ -166,6 +172,27 @@ export default function InventoryPage() {
         }
     }
 
+    const handleNewSale = () => {
+        setEditingSale(null)
+        setSaleModalOpen(true)
+    }
+
+    const handleEditSale = (id: string) => {
+        const sale = sales.find((s) => s.id === id)
+        if (sale) {
+            setEditingSale(sale)
+            setSaleModalOpen(true)
+        }
+    }
+
+    const handleSaveSale = async (data: Partial<Sale>) => {
+        if (editingSale) {
+            return await updateSale(editingSale.id, data)
+        } else {
+            return await createSale(data)
+        }
+    }
+
     // Only show loading spinner on initial load, not on refreshes
     const isInitialLoad = loading && products.length === 0
 
@@ -218,7 +245,9 @@ export default function InventoryPage() {
                 onReturnRental={(id: string) => returnRental(id)}
                 onCreateRental={handleCreateRental}
                 onViewSale={(id: string) => console.log("View sale:", id)}
-                onRecordSale={() => console.log("Record sale")}
+                onEditSale={handleEditSale}
+                onDeleteSale={(id: string) => deleteSale(id)}
+                onRecordSale={handleNewSale}
             />
 
             <CustomerFormModal
@@ -250,6 +279,15 @@ export default function InventoryPage() {
                 isOpen={rentalModalOpen}
                 onClose={() => setRentalModalOpen(false)}
                 onSave={handleSaveRental}
+            />
+
+            <SaleFormModal
+                sale={editingSale}
+                products={products}
+                customers={customers}
+                isOpen={saleModalOpen}
+                onClose={() => setSaleModalOpen(false)}
+                onSave={handleSaveSale}
             />
         </>
     )
