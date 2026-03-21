@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { X } from "lucide-react"
-import type { Rental, Product, Customer, RentalPeriod } from "@/types/inventory"
+import type { Rental, Product, Customer, RentalPeriod, RentalStatus } from "@/types/inventory"
 
 interface RentalFormModalProps {
   rental: Rental | null
@@ -21,6 +21,9 @@ const emptyRental: Partial<Rental> = {
   dueDate: "",
   deposit: 0,
   rentalFee: 0,
+  lateFee: 0,
+  status: "active",
+  returnDate: null,
   conditionNotes: "",
 }
 
@@ -67,6 +70,9 @@ export function RentalFormModal({
           dueDate: rental.dueDate.split("T")[0],
           deposit: rental.deposit,
           rentalFee: rental.rentalFee,
+          lateFee: rental.lateFee,
+          status: rental.status,
+          returnDate: rental.returnDate ? rental.returnDate.split("T")[0] : null,
           conditionNotes: rental.conditionNotes || "",
         })
       } else {
@@ -316,6 +322,89 @@ export function RentalFormModal({
                 </div>
               </div>
             </div>
+
+            {/* Edit-only fields: Late Fee, Status, Return Date */}
+            {isEditing && (
+              <>
+                {/* Late Fee and Status Row */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Late Fee */}
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Late Fee
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={formData.lateFee || 0}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            lateFee: parseFloat(e.target.value) || 0,
+                          }))
+                        }
+                        className="w-full rounded-lg border border-slate-300 pl-7 pr-3 py-2 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Status */}
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Status
+                    </label>
+                    <select
+                      value={formData.status}
+                      onChange={(e) => {
+                        const newStatus = e.target.value as RentalStatus
+                        const today = new Date().toISOString().split('T')[0]
+                        setFormData((prev) => ({
+                          ...prev,
+                          status: newStatus,
+                          // Set return date to today when changing to returned, clear when changing away
+                          returnDate: newStatus === 'returned' ? (prev.returnDate || today) : null,
+                        }))
+                      }}
+                      className="h-[38px] w-full rounded-lg border border-slate-300 px-3 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                    >
+                      <option value="active">Active</option>
+                      <option value="overdue">Overdue</option>
+                      <option value="returned">Returned</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Return Date */}
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Return Date
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={formData.returnDate ?? ""}
+                      max={new Date().toISOString().split('T')[0]}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          returnDate: e.target.value || null,
+                        }))
+                      }
+                      className={`w-full rounded-lg border border-slate-300 px-3 py-2 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-800 ${formData.returnDate ? 'text-slate-900 dark:text-slate-100' : 'text-transparent'}`}
+                    />
+                    {!formData.returnDate && (
+                      <span className="pointer-events-none absolute inset-0 flex items-center px-3 text-sm text-slate-400 dark:text-slate-500">
+                        Not returned
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">Leave empty if not yet returned</p>
+                </div>
+              </>
+            )}
 
             {/* Condition Notes */}
             <div>

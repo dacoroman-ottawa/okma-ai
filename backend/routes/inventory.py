@@ -406,10 +406,17 @@ async def update_rental(
             continue
         if key == "rental_period" and value:
             setattr(rental, key, RentalPeriodEnum(value))
+        elif key == "status" and value:
+            setattr(rental, key, RentalStatusEnum(value))
         elif key == "start_date" and value:
             setattr(rental, key, datetime.fromisoformat(value).date())
         elif key == "due_date" and value:
             setattr(rental, key, datetime.fromisoformat(value).date())
+        elif key == "return_date":
+            if value:
+                setattr(rental, key, datetime.fromisoformat(value).date())
+            else:
+                setattr(rental, key, None)
         elif hasattr(rental, key):
             setattr(rental, key, value)
 
