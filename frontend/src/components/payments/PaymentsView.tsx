@@ -7,7 +7,13 @@ import {
   Sliders,
   Package,
   ChevronDown,
+  Download,
+  FileSpreadsheet,
+  FileText,
 } from 'lucide-react'
+import * as XLSX from 'xlsx'
+import { jsPDF } from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import type { PaymentsProps, TransactionType, Transaction, StudentBalance } from '@/types/payments'
 import { TransactionList } from './TransactionList'
 import { StudentBalances } from './StudentBalances'
@@ -32,7 +38,10 @@ export function PaymentsView({
   const [activeTab, setActiveTab] = useState<TabType>('transactions')
   const [typeFilter, setTypeFilter] = useState<FilterType>('all')
   const [studentFilter, setStudentFilter] = useState<string | null>(null)
+  const [startDate, setStartDate] = useState<string>('')
+  const [endDate, setEndDate] = useState<string>('')
   const [showActionsMenu, setShowActionsMenu] = useState(false)
+  const [showExportMenu, setShowExportMenu] = useState(false)
 
   // Filter transactions
   const filteredTransactions = useMemo(() => {
@@ -43,9 +52,24 @@ export function PaymentsView({
       if (studentFilter && txn.studentId !== studentFilter) {
         return false
       }
+      if (startDate) {
+        const txnDate = new Date(txn.date)
+        const filterStart = new Date(startDate)
+        if (txnDate < filterStart) {
+          return false
+        }
+      }
+      if (endDate) {
+        const txnDate = new Date(txn.date)
+        const filterEnd = new Date(endDate)
+        filterEnd.setHours(23, 59, 59, 999)
+        if (txnDate > filterEnd) {
+          return false
+        }
+      }
       return true
     })
-  }, [transactions, typeFilter, studentFilter])
+  }, [transactions, typeFilter, studentFilter, startDate, endDate])
 
   // Calculate summary stats
   const stats = useMemo(() => {
@@ -63,6 +87,95 @@ export function PaymentsView({
       style: 'currency',
       currency: 'CAD',
     }).format(amount)
+
+  const getStudentName = (id: string) =>
+    students.find((s) => s.id === id)?.name ?? 'Unknown Student'
+
+  const getTransactionLabel = (type: Transaction['type']): string => {
+    switch (type) {
+      case 'purchase':
+        return 'Credit Purchase'
+      case 'deduction':
+        return 'Class Attended'
+      case 'adjustment':
+        return 'Adjustment'
+      case 'inventory_payment':
+        return 'Inventory'
+      default:
+        return 'Transaction'
+    }
+  }
+
+  const formatDateForExport = (dateString: string): string => {
+    return new Date(dateString).toLocaleDateString('en-CA', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
+  }
+
+  const exportToXLSX = () => {
+    const data = filteredTransactions.map((txn) => ({
+      Date: formatDateForExport(txn.date),
+      Type: getTransactionLabel(txn.type),
+      Student: getStudentName(txn.studentId),
+      Credits: txn.credits,
+      Amount: txn.totalAmount > 0 ? txn.totalAmount : '',
+      Note: txn.note ?? '',
+    }))
+
+    const worksheet = XLSX.utils.json_to_sheet(data)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Transactions')
+
+    // Auto-size columns
+    const colWidths = [
+      { wch: 12 }, // Date
+      { wch: 15 }, // Type
+      { wch: 20 }, // Student
+      { wch: 8 },  // Credits
+      { wch: 12 }, // Amount
+      { wch: 30 }, // Note
+    ]
+    worksheet['!cols'] = colWidths
+
+    XLSX.writeFile(workbook, `transactions-${new Date().toISOString().split('T')[0]}.xlsx`)
+    setShowExportMenu(false)
+  }
+
+  const exportToPDF = () => {
+    const doc = new jsPDF()
+
+    doc.setFontSize(18)
+    doc.text('Transactions Report', 14, 22)
+
+    doc.setFontSize(10)
+    doc.setTextColor(100)
+    const dateRange = startDate || endDate
+      ? `${startDate || 'Start'} to ${endDate || 'Present'}`
+      : 'All Time'
+    doc.text(`Date Range: ${dateRange}`, 14, 30)
+    doc.text(`Generated: ${new Date().toLocaleDateString('en-CA')}`, 14, 36)
+
+    const tableData = filteredTransactions.map((txn) => [
+      formatDateForExport(txn.date),
+      getTransactionLabel(txn.type),
+      getStudentName(txn.studentId),
+      txn.credits.toString(),
+      txn.totalAmount > 0 ? formatCurrency(txn.totalAmount) : '—',
+    ])
+
+    autoTable(doc, {
+      startY: 42,
+      head: [['Date', 'Type', 'Student', 'Credits', 'Amount']],
+      body: tableData,
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [79, 70, 229] },
+    })
+
+    doc.save(`transactions-${new Date().toISOString().split('T')[0]}.pdf`)
+    setShowExportMenu(false)
+  }
 
   return (
     <div className="flex h-full flex-col bg-slate-50 dark:bg-slate-950">
@@ -195,16 +308,16 @@ export function PaymentsView({
 
             {/* Filters (only show for transactions tab) */}
             {activeTab === 'transactions' && (
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap items-center gap-3">
                 <select
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value as FilterType)}
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition-colors hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
+                  className="h-[38px] rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 transition-colors hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
                 >
                   <option value="all">All Types</option>
-                  <option value="credit_purchase">Credit Purchases</option>
-                  <option value="credit_deduction">Class Attended</option>
-                  <option value="credit_adjustment">Adjustments</option>
+                  <option value="purchase">Credit Purchases</option>
+                  <option value="deduction">Class Attended</option>
+                  <option value="adjustment">Adjustments</option>
                   <option value="inventory_payment">Inventory</option>
                 </select>
 
@@ -213,7 +326,7 @@ export function PaymentsView({
                   onChange={(e) =>
                     setStudentFilter(e.target.value || null)
                   }
-                  className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 transition-colors hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
+                  className="h-[38px] rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-700 transition-colors hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
                 >
                   <option value="">All Students</option>
                   {students.map((student) => (
@@ -222,13 +335,94 @@ export function PaymentsView({
                     </option>
                   ))}
                 </select>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm text-slate-500 dark:text-slate-400">From:</span>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Backspace' || e.key === 'Delete') {
+                          setStartDate('')
+                        }
+                      }}
+                      className={`rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-colors hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 ${startDate ? 'text-slate-700 dark:text-slate-300' : 'text-transparent'}`}
+                    />
+                    {!startDate && (
+                      <span className="pointer-events-none absolute inset-0 flex items-center px-3 text-sm text-slate-400 dark:text-slate-500">
+                        &nbsp; , &nbsp; , &nbsp;
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm text-slate-500 dark:text-slate-400">To:</span>
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Backspace' || e.key === 'Delete') {
+                          setEndDate('')
+                        }
+                      }}
+                      className={`rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm transition-colors hover:border-slate-300 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 ${endDate ? 'text-slate-700 dark:text-slate-300' : 'text-transparent'}`}
+                    />
+                    {!endDate && (
+                      <span className="pointer-events-none absolute inset-0 flex items-center px-3 text-sm text-slate-400 dark:text-slate-500">
+                        &nbsp; , &nbsp; , &nbsp;
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Export dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowExportMenu(!showExportMenu)}
+                    className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800"
+                  >
+                    <Download className="h-4 w-4" />
+                    Export
+                    <ChevronDown className="h-4 w-4" />
+                  </button>
+
+                  {showExportMenu && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setShowExportMenu(false)}
+                      />
+                      <div className="absolute right-0 z-20 mt-2 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                        <button
+                          onClick={exportToXLSX}
+                          className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                        >
+                          <FileSpreadsheet className="h-4 w-4 text-emerald-500" />
+                          Export to XLSX
+                        </button>
+                        <button
+                          onClick={exportToPDF}
+                          className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                        >
+                          <FileText className="h-4 w-4 text-red-500" />
+                          Export to PDF
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             )}
           </div>
 
           {/* Filter count */}
           {activeTab === 'transactions' &&
-            (typeFilter !== 'all' || studentFilter) && (
+            (typeFilter !== 'all' || studentFilter || startDate || endDate) && (
               <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
                 Showing {filteredTransactions.length} of {transactions.length}{' '}
                 transactions
