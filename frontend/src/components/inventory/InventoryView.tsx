@@ -45,6 +45,8 @@ export function InventoryView({
   onToggleCustomerStatus,
   onAddCustomer,
   onViewRental,
+  onEditRental,
+  onDeleteRental,
   onReturnRental,
   onCreateRental,
   onViewSale,
@@ -153,6 +155,8 @@ export function InventoryView({
               products={products}
               customers={customers}
               onViewRental={onViewRental}
+              onEditRental={onEditRental}
+              onDeleteRental={onDeleteRental}
               onReturnRental={onReturnRental}
               onCreateRental={onCreateRental}
             />

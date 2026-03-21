@@ -203,6 +203,10 @@ export interface InventoryProps {
   onAddCustomer?: () => void
   /** Called when user wants to view rental details */
   onViewRental?: (id: string) => void
+  /** Called when user wants to edit a rental */
+  onEditRental?: (id: string) => void
+  /** Called when user wants to delete a rental */
+  onDeleteRental?: (id: string) => void
   /** Called when user wants to mark a rental as returned */
   onReturnRental?: (id: string) => void
   /** Called when user wants to create a new rental */

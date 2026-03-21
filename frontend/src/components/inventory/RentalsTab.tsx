@@ -5,7 +5,9 @@ import {
   AlertCircle,
   CheckCircle,
   RotateCcw,
-  ChevronRight,
+  MoreVertical,
+  Pencil,
+  Trash2,
 } from 'lucide-react'
 import type { Rental, Product, Customer, RentalStatus } from '@/types/inventory'
 
@@ -14,6 +16,8 @@ interface RentalsTabProps {
   products: Product[]
   customers: Customer[]
   onViewRental?: (id: string) => void
+  onEditRental?: (id: string) => void
+  onDeleteRental?: (id: string) => void
   onReturnRental?: (id: string) => void
   onCreateRental?: () => void
 }
@@ -46,10 +50,13 @@ export function RentalsTab({
   products,
   customers,
   onViewRental,
+  onEditRental,
+  onDeleteRental,
   onReturnRental,
   onCreateRental,
 }: RentalsTabProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
   const getProductName = (id: string) =>
     products.find((p) => p.id === id)?.name ?? 'Unknown Product'
@@ -57,12 +64,16 @@ export function RentalsTab({
   const getCustomerName = (id: string) =>
     customers.find((c) => c.id === id)?.name ?? 'Unknown Customer'
 
-  const formatDate = (dateString: string) =>
-    new Date(dateString).toLocaleDateString('en-CA', {
+  const formatDate = (dateString: string) => {
+    // Parse date string as local date to avoid timezone shifts
+    const [year, month, day] = dateString.split('T')[0].split('-').map(Number)
+    const date = new Date(year, month - 1, day)
+    return date.toLocaleDateString('en-CA', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
     })
+  }
 
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-CA', {
@@ -173,6 +184,9 @@ export function RentalsTab({
                     Period
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Start Date
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
                     Due Date
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
@@ -185,9 +199,11 @@ export function RentalsTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                {filteredRentals.map((rental) => {
+                {filteredRentals.map((rental, index) => {
                   const config = statusConfig[rental.status]
                   const StatusIcon = config.icon
+                  const isMenuOpen = openMenuId === rental.id
+                  const isNearBottom = index >= filteredRentals.length - 2
 
                   return (
                     <tr
@@ -203,6 +219,9 @@ export function RentalsTab({
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
                         <span className="capitalize">{rental.rentalPeriod}</span>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
+                        {formatDate(rental.startDate)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-4 text-sm">
                         {rental.returnDate ? (
@@ -240,20 +259,76 @@ export function RentalsTab({
                         )}
                       </td>
                       <td className="whitespace-nowrap px-4 py-4">
-                        {rental.status === 'active' || rental.status === 'overdue' ? (
+                        <div className="relative flex items-center justify-end gap-1">
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              onReturnRental?.(rental.id)
+                              setOpenMenuId(isMenuOpen ? null : rental.id)
                             }}
-                            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
-                            title="Mark as returned"
+                            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
                           >
-                            <RotateCcw className="h-4 w-4" />
+                            <MoreVertical className="h-4 w-4" />
                           </button>
-                        ) : (
-                          <ChevronRight className="h-4 w-4 text-slate-400" />
-                        )}
+
+                          {isMenuOpen && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-10"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setOpenMenuId(null)
+                                }}
+                              />
+                              <div className={`absolute right-0 z-20 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900 ${
+                                isNearBottom ? 'bottom-full mb-1' : 'top-full mt-1'
+                              }`}>
+                                {(rental.status === 'active' || rental.status === 'overdue') && (
+                                  <>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        setOpenMenuId(null)
+                                        if (confirm(`Mark this rental as returned?`)) {
+                                          onReturnRental?.(rental.id)
+                                        }
+                                      }}
+                                      className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                                    >
+                                      <RotateCcw className="h-4 w-4" />
+                                      Return Rental
+                                    </button>
+                                    <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
+                                  </>
+                                )}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setOpenMenuId(null)
+                                    onEditRental?.(rental.id)
+                                  }}
+                                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                  Edit Rental
+                                </button>
+                                <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setOpenMenuId(null)
+                                    if (confirm(`Delete this rental for ${getProductName(rental.productId)}?`)) {
+                                      onDeleteRental?.(rental.id)
+                                    }
+                                  }}
+                                  className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                  Delete Rental
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )
@@ -264,9 +339,11 @@ export function RentalsTab({
 
           {/* Mobile list */}
           <div className="divide-y divide-slate-200 md:hidden dark:divide-slate-700">
-            {filteredRentals.map((rental) => {
+            {filteredRentals.map((rental, index) => {
               const config = statusConfig[rental.status]
               const StatusIcon = config.icon
+              const isMenuOpen = openMenuId === rental.id
+              const isNearBottom = index >= filteredRentals.length - 2
 
               return (
                 <div
@@ -294,15 +371,87 @@ export function RentalsTab({
                         </span>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium text-slate-900 dark:text-slate-100">
-                        {formatCurrency(rental.rentalFee)}
-                      </p>
-                      {rental.lateFee > 0 && (
-                        <p className="text-xs text-red-600 dark:text-red-400">
-                          +{formatCurrency(rental.lateFee)}
+                    <div className="flex items-start gap-2">
+                      <div className="text-right">
+                        <p className="font-medium text-slate-900 dark:text-slate-100">
+                          {formatCurrency(rental.rentalFee)}
                         </p>
-                      )}
+                        {rental.lateFee > 0 && (
+                          <p className="text-xs text-red-600 dark:text-red-400">
+                            +{formatCurrency(rental.lateFee)}
+                          </p>
+                        )}
+                      </div>
+                      <div className="relative">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setOpenMenuId(isMenuOpen ? null : rental.id)
+                          }}
+                          className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+
+                        {isMenuOpen && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-10"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setOpenMenuId(null)
+                              }}
+                            />
+                            <div className={`absolute right-0 z-20 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900 ${
+                              isNearBottom ? 'bottom-full mb-1' : 'top-full mt-1'
+                            }`}>
+                              {(rental.status === 'active' || rental.status === 'overdue') && (
+                                <>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setOpenMenuId(null)
+                                      if (confirm(`Mark this rental as returned?`)) {
+                                        onReturnRental?.(rental.id)
+                                      }
+                                    }}
+                                    className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                                  >
+                                    <RotateCcw className="h-4 w-4" />
+                                    Return Rental
+                                  </button>
+                                  <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
+                                </>
+                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setOpenMenuId(null)
+                                  onEditRental?.(rental.id)
+                                }}
+                                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                              >
+                                <Pencil className="h-4 w-4" />
+                                Edit Rental
+                              </button>
+                              <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setOpenMenuId(null)
+                                  if (confirm(`Delete this rental for ${getProductName(rental.productId)}?`)) {
+                                    onDeleteRental?.(rental.id)
+                                  }
+                                }}
+                                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete Rental
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

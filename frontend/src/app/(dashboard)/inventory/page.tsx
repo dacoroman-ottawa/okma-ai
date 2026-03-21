@@ -6,7 +6,8 @@ import { InventoryView } from "@/components/inventory/InventoryView"
 import { CustomerFormModal } from "@/components/inventory/CustomerFormModal"
 import { SupplierFormModal } from "@/components/inventory/SupplierFormModal"
 import { ProductFormModal } from "@/components/inventory/ProductFormModal"
-import type { Customer, Supplier, Product, InventoryTabType } from "@/types/inventory"
+import { RentalFormModal } from "@/components/inventory/RentalFormModal"
+import type { Customer, Supplier, Product, Rental, InventoryTabType } from "@/types/inventory"
 
 export default function InventoryPage() {
     const {
@@ -26,7 +27,10 @@ export default function InventoryPage() {
         deleteCustomer,
         createCustomer,
         updateCustomer,
+        createRental,
         returnRental,
+        updateRental,
+        deleteRental,
     } = useInventory()
 
     const [activeTab, setActiveTab] = useState<InventoryTabType>("products")
@@ -38,6 +42,8 @@ export default function InventoryPage() {
     const [productModalOpen, setProductModalOpen] = useState(false)
     const [editingProduct, setEditingProduct] = useState<Product | null>(null)
     const [togglingProduct, setTogglingProduct] = useState<string | null>(null)
+    const [rentalModalOpen, setRentalModalOpen] = useState(false)
+    const [editingRental, setEditingRental] = useState<Rental | null>(null)
 
     const handleAddCustomer = () => {
         setEditingCustomer(null)
@@ -139,6 +145,27 @@ export default function InventoryPage() {
         }
     }
 
+    const handleCreateRental = () => {
+        setEditingRental(null)
+        setRentalModalOpen(true)
+    }
+
+    const handleEditRental = (id: string) => {
+        const rental = rentals.find((r) => r.id === id)
+        if (rental) {
+            setEditingRental(rental)
+            setRentalModalOpen(true)
+        }
+    }
+
+    const handleSaveRental = async (data: Partial<Rental>) => {
+        if (editingRental) {
+            return await updateRental(editingRental.id, data)
+        } else {
+            return await createRental(data)
+        }
+    }
+
     // Only show loading spinner on initial load, not on refreshes
     const isInitialLoad = loading && products.length === 0
 
@@ -186,8 +213,10 @@ export default function InventoryPage() {
                 onToggleCustomerStatus={handleToggleCustomerStatus}
                 onAddCustomer={handleAddCustomer}
                 onViewRental={(id: string) => console.log("View rental:", id)}
+                onEditRental={handleEditRental}
+                onDeleteRental={(id: string) => deleteRental(id)}
                 onReturnRental={(id: string) => returnRental(id)}
-                onCreateRental={() => console.log("Create rental")}
+                onCreateRental={handleCreateRental}
                 onViewSale={(id: string) => console.log("View sale:", id)}
                 onRecordSale={() => console.log("Record sale")}
             />
@@ -212,6 +241,15 @@ export default function InventoryPage() {
                 isOpen={productModalOpen}
                 onClose={() => setProductModalOpen(false)}
                 onSave={handleSaveProduct}
+            />
+
+            <RentalFormModal
+                rental={editingRental}
+                products={products}
+                customers={customers}
+                isOpen={rentalModalOpen}
+                onClose={() => setRentalModalOpen(false)}
+                onSave={handleSaveRental}
             />
         </>
     )

@@ -386,6 +386,55 @@ async def return_rental(
     db.refresh(rental)
     return rental
 
+@router.put("/rentals/{rental_id}")
+async def update_rental(
+    rental_id: str,
+    rental_data: dict,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """Update a rental (admin only)"""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only admins can update rentals")
+
+    rental = db.query(Rental).filter(Rental.id == rental_id).first()
+    if not rental:
+        raise HTTPException(status_code=404, detail="Rental not found")
+
+    for key, value in rental_data.items():
+        if key in ("id", "product_id", "customer_id"):  # Skip immutable fields
+            continue
+        if key == "rental_period" and value:
+            setattr(rental, key, RentalPeriodEnum(value))
+        elif key == "start_date" and value:
+            setattr(rental, key, datetime.fromisoformat(value).date())
+        elif key == "due_date" and value:
+            setattr(rental, key, datetime.fromisoformat(value).date())
+        elif hasattr(rental, key):
+            setattr(rental, key, value)
+
+    db.commit()
+    db.refresh(rental)
+    return rental
+
+@router.delete("/rentals/{rental_id}")
+async def delete_rental(
+    rental_id: str,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    """Delete a rental (admin only)"""
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only admins can delete rentals")
+
+    rental = db.query(Rental).filter(Rental.id == rental_id).first()
+    if not rental:
+        raise HTTPException(status_code=404, detail="Rental not found")
+
+    db.delete(rental)
+    db.commit()
+    return {"message": "Rental deleted"}
+
 # =============================================================================
 # Sales
 # =============================================================================

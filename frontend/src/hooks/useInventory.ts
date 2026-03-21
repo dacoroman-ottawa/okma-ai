@@ -250,17 +250,23 @@ export function useInventory() {
     const createRental = async (data: Partial<Rental>) => {
         try {
             const headers = await getAuthHeaders()
+            const body = toSnake(data)
+            console.log("Creating rental with data:", body)
             const res = await fetch("http://localhost:8000/inventory/rentals", {
                 method: "POST",
                 headers,
-                body: JSON.stringify(toSnake(data)),
+                body: JSON.stringify(body),
             })
-            if (!res.ok) throw new Error("Failed to create rental")
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}))
+                console.error("Create rental failed:", res.status, errorData)
+                throw new Error(errorData.detail || "Failed to create rental")
+            }
             await fetchData()
             return true
         } catch (err) {
             console.error("Create rental error:", err)
-            setError("Failed to create rental")
+            setError(err instanceof Error ? err.message : "Failed to create rental")
             return false
         }
     }
@@ -268,17 +274,65 @@ export function useInventory() {
     const returnRental = async (id: string, conditionNotes?: string) => {
         try {
             const headers = await getAuthHeaders()
+            const body = conditionNotes ? { condition_notes: conditionNotes } : {}
             const res = await fetch(`http://localhost:8000/inventory/rentals/${id}/return`, {
                 method: "PUT",
                 headers,
-                body: JSON.stringify(toSnake({ conditionNotes })),
+                body: JSON.stringify(body),
             })
-            if (!res.ok) throw new Error("Failed to return rental")
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}))
+                console.error("Return rental failed:", res.status, errorData)
+                throw new Error(errorData.detail || "Failed to return rental")
+            }
             await fetchData()
             return true
         } catch (err) {
             console.error("Return rental error:", err)
-            setError("Failed to return rental")
+            setError(err instanceof Error ? err.message : "Failed to return rental")
+            return false
+        }
+    }
+
+    const updateRental = async (id: string, data: Partial<Rental>) => {
+        try {
+            const headers = await getAuthHeaders()
+            const res = await fetch(`http://localhost:8000/inventory/rentals/${id}`, {
+                method: "PUT",
+                headers,
+                body: JSON.stringify(toSnake(data)),
+            })
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}))
+                console.error("Update rental failed:", res.status, errorData)
+                throw new Error(errorData.detail || "Failed to update rental")
+            }
+            await fetchData()
+            return true
+        } catch (err) {
+            console.error("Update rental error:", err)
+            setError(err instanceof Error ? err.message : "Failed to update rental")
+            return false
+        }
+    }
+
+    const deleteRental = async (id: string) => {
+        try {
+            const headers = await getAuthHeaders()
+            const res = await fetch(`http://localhost:8000/inventory/rentals/${id}`, {
+                method: "DELETE",
+                headers,
+            })
+            if (!res.ok) {
+                const errorData = await res.json().catch(() => ({}))
+                console.error("Delete rental failed:", res.status, errorData)
+                throw new Error(errorData.detail || "Failed to delete rental")
+            }
+            await fetchData()
+            return true
+        } catch (err) {
+            console.error("Delete rental error:", err)
+            setError(err instanceof Error ? err.message : "Failed to delete rental")
             return false
         }
     }
@@ -325,6 +379,8 @@ export function useInventory() {
         deleteCustomer,
         // Rental operations
         createRental,
+        updateRental,
+        deleteRental,
         returnRental,
         // Sale operations
         recordSale,
