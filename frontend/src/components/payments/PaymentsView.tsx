@@ -10,6 +10,7 @@ import {
   Download,
   FileSpreadsheet,
   FileText,
+  Filter,
 } from 'lucide-react'
 import * as XLSX from 'xlsx'
 import { jsPDF } from 'jspdf'
@@ -309,6 +310,7 @@ export function PaymentsView({
             {/* Filters (only show for transactions tab) */}
             {activeTab === 'transactions' && (
               <div className="flex flex-wrap items-center gap-3">
+                <Filter className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                 <select
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value as FilterType)}

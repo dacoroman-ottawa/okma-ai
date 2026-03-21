@@ -52,10 +52,29 @@ export function SuppliersTab({
       {/* Fixed header */}
       <div className="shrink-0 pb-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {activeCount} active supplier{activeCount !== 1 ? 's' : ''}
-            {suppliers.length > activeCount && ` (${suppliers.length - activeCount} inactive)`}
-          </p>
+          <div className="flex items-center gap-6">
+            <div>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                Active Suppliers
+              </p>
+              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                {activeCount}
+              </p>
+            </div>
+            {suppliers.length > activeCount && (
+              <>
+                <div className="h-8 w-px bg-slate-200 dark:bg-slate-700" />
+                <div>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                    Inactive
+                  </p>
+                  <p className="text-2xl font-bold text-slate-400 dark:text-slate-500">
+                    {suppliers.length - activeCount}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
 
           <button
             onClick={onAddSupplier}
