@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { Plus, ShoppingBag, ChevronRight } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Plus, ShoppingBag, ChevronRight, Search } from 'lucide-react'
 import type { Sale, Product, Customer } from '@/types/inventory'
 
 interface SalesTabProps {
@@ -17,6 +17,8 @@ export function SalesTab({
   onViewSale,
   onRecordSale,
 }: SalesTabProps) {
+  const [searchQuery, setSearchQuery] = useState('')
+
   const getProductName = (id: string) =>
     products.find((p) => p.id === id)?.name ?? 'Unknown Product'
 
@@ -36,11 +38,21 @@ export function SalesTab({
       currency: 'CAD',
     }).format(amount)
 
-  const sortedSales = useMemo(() => {
-    return [...sales].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    )
-  }, [sales])
+  const filteredSales = useMemo(() => {
+    return sales
+      .filter((sale) => {
+        if (searchQuery) {
+          const productName = (products.find((p) => p.id === sale.productId)?.name ?? '').toLowerCase()
+          const customerName = (customers.find((c) => c.id === sale.customerId)?.name ?? '').toLowerCase()
+          const query = searchQuery.toLowerCase()
+          if (!productName.includes(query) && !customerName.includes(query)) {
+            return false
+          }
+        }
+        return true
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+  }, [sales, searchQuery, products, customers])
 
   const totalRevenue = sales.reduce((sum, sale) => sum + sale.totalAmount, 0)
 
@@ -48,7 +60,21 @@ export function SalesTab({
     <div className="flex h-full flex-col">
       {/* Fixed header */}
       <div className="shrink-0 pb-4">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-1 flex-wrap items-center gap-4">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search sales..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+              />
+            </div>
+          </div>
+
           <div className="flex items-center gap-6">
             <div>
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
@@ -81,7 +107,7 @@ export function SalesTab({
 
       {/* Scrollable sales list */}
       <div className="min-h-0 flex-1 overflow-y-auto">
-      {sortedSales.length === 0 ? (
+      {filteredSales.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-900">
           <ShoppingBag className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
           <h3 className="mt-4 text-lg font-medium text-slate-900 dark:text-slate-100">
@@ -120,7 +146,7 @@ export function SalesTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-                {sortedSales.map((sale) => (
+                {filteredSales.map((sale) => (
                   <tr
                     key={sale.id}
                     onClick={() => onViewSale?.(sale.id)}
@@ -157,7 +183,7 @@ export function SalesTab({
 
           {/* Mobile list */}
           <div className="divide-y divide-slate-200 md:hidden dark:divide-slate-700">
-            {sortedSales.map((sale) => (
+            {filteredSales.map((sale) => (
               <div
                 key={sale.id}
                 onClick={() => onViewSale?.(sale.id)}

@@ -8,6 +8,7 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
+  Search,
 } from 'lucide-react'
 import type { Rental, Product, Customer, RentalStatus } from '@/types/inventory'
 
@@ -57,6 +58,7 @@ export function RentalsTab({
 }: RentalsTabProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const getProductName = (id: string) =>
     products.find((p) => p.id === id)?.name ?? 'Unknown Product'
@@ -84,6 +86,14 @@ export function RentalsTab({
   const filteredRentals = useMemo(() => {
     return rentals
       .filter((rental) => {
+        if (searchQuery) {
+          const productName = (products.find((p) => p.id === rental.productId)?.name ?? '').toLowerCase()
+          const customerName = (customers.find((c) => c.id === rental.customerId)?.name ?? '').toLowerCase()
+          const query = searchQuery.toLowerCase()
+          if (!productName.includes(query) && !customerName.includes(query)) {
+            return false
+          }
+        }
         if (statusFilter !== 'all' && rental.status !== statusFilter) return false
         return true
       })
@@ -95,7 +105,7 @@ export function RentalsTab({
         }
         return new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
       })
-  }, [rentals, statusFilter])
+  }, [rentals, statusFilter, searchQuery, products, customers])
 
   const activeCount = rentals.filter((r) => r.status === 'active').length
   const overdueCount = rentals.filter((r) => r.status === 'overdue').length
@@ -104,8 +114,22 @@ export function RentalsTab({
     <div className="flex h-full flex-col">
       {/* Fixed header */}
       <div className="shrink-0 pb-4">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap gap-3">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-1 flex-wrap items-center gap-3">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search rentals..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg border border-slate-200 bg-white py-2 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={() => setStatusFilter(statusFilter === 'all' ? 'all' : 'all')}
               className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
