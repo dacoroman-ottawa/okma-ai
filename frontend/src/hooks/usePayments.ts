@@ -118,6 +118,41 @@ export function usePayments() {
         }
     }
 
+    const updateTransaction = async (id: string, data: any) => {
+        try {
+            const headers = await getAuthHeaders()
+            const res = await fetch(`http://localhost:8000/payments/transactions/${id}`, {
+                method: "PUT",
+                headers,
+                body: JSON.stringify(toSnake(data))
+            })
+            if (!res.ok) throw new Error("Failed to update transaction")
+            await fetchData()
+            return true
+        } catch (err) {
+            console.error("Update transaction error:", err)
+            setError("Failed to update transaction")
+            return false
+        }
+    }
+
+    const deleteTransaction = async (id: string) => {
+        try {
+            const headers = await getAuthHeaders()
+            const res = await fetch(`http://localhost:8000/payments/transactions/${id}`, {
+                method: "DELETE",
+                headers
+            })
+            if (!res.ok) throw new Error("Failed to delete transaction")
+            await fetchData()
+            return true
+        } catch (err) {
+            console.error("Delete transaction error:", err)
+            setError("Failed to delete transaction")
+            return false
+        }
+    }
+
     return {
         transactions,
         balances,
@@ -126,6 +161,8 @@ export function usePayments() {
         refresh: fetchData,
         purchaseCredits,
         adjustCredits,
-        processInventoryPayment
+        processInventoryPayment,
+        updateTransaction,
+        deleteTransaction
     }
 }

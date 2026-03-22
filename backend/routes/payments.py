@@ -227,8 +227,113 @@ async def inventory_payment(
         line_items=json.dumps(line_items),
         note="Inventory Payment"
     )
-    
+
     db.add(transaction)
     db.commit()
-    
+
     return {"status": "success", "transactionId": transaction.id}
+
+@router.get("/transactions/{transaction_id}")
+async def get_transaction(
+    transaction_id: str,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    transaction = db.query(CreditTransaction).filter(CreditTransaction.id == transaction_id).first()
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    # Check authorization
+    if not current_user.is_admin:
+        if current_user.role.value == "student" and transaction.student_id != current_user.student.id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+        elif current_user.role.value == "teacher":
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+    return {
+        "id": transaction.id,
+        "type": transaction.type.value,
+        "studentId": transaction.student_id,
+        "enrollmentId": transaction.enrollment_id,
+        "date": transaction.date.isoformat(),
+        "credits": transaction.credits,
+        "amount": transaction.amount,
+        "paymentMethod": transaction.payment_method,
+        "taxType": transaction.tax_type.value if transaction.tax_type else "None",
+        "taxAmount": transaction.tax_amount or 0,
+        "subtotal": transaction.subtotal or 0,
+        "discountAmount": transaction.discount_amount or 0,
+        "totalAmount": transaction.amount,
+        "note": transaction.note,
+        "lineItems": json.loads(transaction.line_items) if transaction.line_items else []
+    }
+
+@router.put("/transactions/{transaction_id}")
+async def update_transaction(
+    transaction_id: str,
+    update_data: dict,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only admins can edit transactions")
+
+    transaction = db.query(CreditTransaction).filter(CreditTransaction.id == transaction_id).first()
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    # Cannot edit deduction (Class Attended) transactions
+    if transaction.type == TransactionTypeEnum.DEDUCTION:
+        raise HTTPException(status_code=400, detail="Cannot edit Class Attended transactions")
+
+    # Update allowed fields based on type
+    if "credits" in update_data:
+        transaction.credits = float(update_data["credits"])
+    if "note" in update_data:
+        transaction.note = update_data["note"]
+    if "payment_method" in update_data:
+        transaction.payment_method = update_data["payment_method"]
+    if "discount_amount" in update_data:
+        transaction.discount_amount = float(update_data["discount_amount"])
+    if "tax_type" in update_data:
+        transaction.tax_type = TaxTypeEnum(update_data["tax_type"])
+
+    # Recalculate totals for purchase/inventory_payment
+    if transaction.type in [TransactionTypeEnum.PURCHASE, TransactionTypeEnum.INVENTORY_PAYMENT]:
+        if transaction.type == TransactionTypeEnum.PURCHASE:
+            enrollment = db.query(Enrollment).filter(Enrollment.id == transaction.enrollment_id).first()
+            if enrollment:
+                teacher = db.query(Teacher).filter(Teacher.id == enrollment.teacher_id).first()
+                hourly_rate = teacher.hourly_rate if teacher else 0
+                subtotal = transaction.credits * hourly_rate
+                transaction.subtotal = subtotal
+
+        discount = transaction.discount_amount or 0
+        tax_rate = 0.13 if transaction.tax_type == TaxTypeEnum.HST else 0.05 if transaction.tax_type == TaxTypeEnum.GST else 0
+        taxable_amount = max(0, (transaction.subtotal or 0) - discount)
+        transaction.tax_amount = taxable_amount * tax_rate
+        transaction.amount = taxable_amount + transaction.tax_amount
+
+    db.commit()
+    return {"status": "success", "transactionId": transaction.id}
+
+@router.delete("/transactions/{transaction_id}")
+async def delete_transaction(
+    transaction_id: str,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user)
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Only admins can delete transactions")
+
+    transaction = db.query(CreditTransaction).filter(CreditTransaction.id == transaction_id).first()
+    if not transaction:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    # Cannot delete deduction (Class Attended) transactions
+    if transaction.type == TransactionTypeEnum.DEDUCTION:
+        raise HTTPException(status_code=400, detail="Cannot delete Class Attended transactions")
+
+    db.delete(transaction)
+    db.commit()
+    return {"status": "success"}

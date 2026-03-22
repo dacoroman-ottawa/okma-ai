@@ -4,11 +4,12 @@
 import { useState } from "react"
 import { PaymentsView } from "@/components/payments/PaymentsView"
 import { Modal } from "@/components/ui/Modal"
-import { CreditPurchaseForm } from "@/components/payments/forms/CreditPurchaseForm"
 import { CreditAdjustmentForm } from "@/components/payments/forms/CreditAdjustmentForm"
 import { InventoryPaymentForm } from "@/components/payments/forms/InventoryPaymentForm"
+import { EditTransactionForm } from "@/components/payments/forms/EditTransactionForm"
 import { usePayments } from "@/hooks/usePayments"
 import { usePeople } from "@/hooks/usePeople"
+import type { Transaction } from "@/types/payments"
 
 export default function PaymentsPage() {
     const {
@@ -18,7 +19,9 @@ export default function PaymentsPage() {
         refresh,
         purchaseCredits,
         adjustCredits,
-        processInventoryPayment
+        processInventoryPayment,
+        updateTransaction,
+        deleteTransaction
     } = usePayments()
 
     const {
@@ -28,8 +31,9 @@ export default function PaymentsPage() {
         loading: peopleLoading
     } = usePeople()
 
-    const [activeModal, setActiveModal] = useState<'purchase' | 'adjustment' | 'inventory' | null>(null)
+    const [activeModal, setActiveModal] = useState<'purchase' | 'adjustment' | 'inventory' | 'edit' | null>(null)
     const [selectedStudentForCredit, setSelectedStudentForCredit] = useState<string | null>(null)
+    const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
 
     const loading = paymentsLoading || peopleLoading
 
@@ -51,7 +55,22 @@ export default function PaymentsPage() {
         setActiveModal('purchase')
     }
 
-    const handleCloseModal = () => setActiveModal(null)
+    const handleEditTransaction = (id: string) => {
+        const transaction = transactions.find(t => t.id === id)
+        if (transaction && transaction.type !== 'deduction') {
+            setEditingTransaction(transaction)
+            setActiveModal('edit')
+        }
+    }
+
+    const handleDeleteTransaction = async (id: string) => {
+        await deleteTransaction(id)
+    }
+
+    const handleCloseModal = () => {
+        setActiveModal(null)
+        setEditingTransaction(null)
+    }
 
     if (loading && transactions.length === 0) {
         return (
@@ -71,6 +90,8 @@ export default function PaymentsPage() {
                 instruments={instruments}
                 enrollments={enrollments}
                 onViewTransaction={(id) => console.log("View transaction", id)}
+                onEditTransaction={handleEditTransaction}
+                onDeleteTransaction={handleDeleteTransaction}
                 onViewStudentHistory={(id) => console.log("View student history", id)}
                 onAddCreditPurchase={handleAddCreditPurchase}
                 onAddAdjustment={handleAddAdjustment}
@@ -82,9 +103,10 @@ export default function PaymentsPage() {
             <Modal
                 isOpen={activeModal === 'purchase'}
                 onClose={handleCloseModal}
-                title="Purchase Credits"
+                title="Credit Purchase"
             >
-                <CreditPurchaseForm
+                <EditTransactionForm
+                    mode="create"
                     students={students}
                     enrollments={enrollments}
                     teachers={teachers}
@@ -128,6 +150,29 @@ export default function PaymentsPage() {
                     }}
                     onCancel={handleCloseModal}
                 />
+            </Modal>
+
+            {/* Edit Transaction Modal */}
+            <Modal
+                isOpen={activeModal === 'edit'}
+                onClose={handleCloseModal}
+                title="Edit Transaction"
+            >
+                {editingTransaction && (
+                    <EditTransactionForm
+                        mode="edit"
+                        transaction={editingTransaction}
+                        students={students}
+                        enrollments={enrollments}
+                        teachers={teachers}
+                        instruments={instruments}
+                        onSubmit={async (data) => {
+                            const success = await updateTransaction(editingTransaction.id, data)
+                            if (success) handleCloseModal()
+                        }}
+                        onCancel={handleCloseModal}
+                    />
+                )}
             </Modal>
         </>
     )

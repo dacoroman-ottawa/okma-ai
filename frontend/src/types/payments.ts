@@ -65,6 +65,10 @@ export interface TransactionListProps {
   enrollments: Array<{ id: string; studentId: string; teacherId: string; instrumentId: string }>
   /** Called when user wants to view transaction details */
   onViewTransaction?: (id: string) => void
+  /** Called when user wants to edit a transaction */
+  onEditTransaction?: (id: string) => void
+  /** Called when user wants to delete a transaction */
+  onDeleteTransaction?: (id: string) => void
   /** Called when user wants to add a new credit purchase */
   onAddCreditPurchase?: () => void
   /** Called when user wants to add a credit adjustment */
@@ -158,6 +162,10 @@ export interface PaymentsProps {
   enrollments: Array<{ id: string; studentId: string; teacherId: string; instrumentId: string }>
   /** Called when user wants to view transaction details */
   onViewTransaction?: (id: string) => void
+  /** Called when user wants to edit a transaction */
+  onEditTransaction?: (id: string) => void
+  /** Called when user wants to delete a transaction */
+  onDeleteTransaction?: (id: string) => void
   /** Called when user wants to view a student's transaction history */
   onViewStudentHistory?: (studentId: string) => void
   /** Called when user wants to add a new credit purchase */

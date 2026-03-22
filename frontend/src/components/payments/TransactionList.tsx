@@ -1,10 +1,12 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import {
   CreditCard,
   MinusCircle,
   Sliders,
   Package,
-  ChevronRight,
+  MoreVertical,
+  Pencil,
+  Trash2,
 } from 'lucide-react'
 import type { TransactionListProps, Transaction } from '../../types/payments'
 
@@ -75,7 +77,11 @@ export function TransactionList({
   instruments,
   enrollments,
   onViewTransaction,
+  onEditTransaction,
+  onDeleteTransaction,
 }: TransactionListProps) {
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+
   const sortedTransactions = useMemo(() => {
     return [...transactions].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
@@ -140,15 +146,18 @@ export function TransactionList({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
-            {sortedTransactions.map((txn) => {
+            {sortedTransactions.map((txn, index) => {
               const Icon = getTransactionIcon(txn.type)
               const enrollmentInfo = getEnrollmentInfo(txn.enrollmentId)
+              const isDeduction = txn.type === 'deduction'
+              const isMenuOpen = openMenuId === txn.id
+              const isNearBottom = index >= sortedTransactions.length - 2
 
               return (
                 <tr
                   key={txn.id}
-                  onClick={() => onViewTransaction?.(txn.id)}
-                  className="cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                  onClick={() => !isDeduction && onViewTransaction?.(txn.id)}
+                  className={isDeduction ? 'transition-colors' : 'cursor-pointer transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50'}
                 >
                   <td className="whitespace-nowrap px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
                     {formatDate(txn.date)}
@@ -205,8 +214,63 @@ export function TransactionList({
                       <span className="text-slate-400 dark:text-slate-500">—</span>
                     )}
                   </td>
-                  <td className="whitespace-nowrap px-4 py-4 text-right">
-                    <ChevronRight className="h-4 w-4 text-slate-400" />
+                  <td className="whitespace-nowrap px-4 py-4">
+                    {!isDeduction ? (
+                      <div className="relative">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setOpenMenuId(isMenuOpen ? null : txn.id)
+                          }}
+                          className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </button>
+
+                        {isMenuOpen && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-10"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setOpenMenuId(null)
+                              }}
+                            />
+                            <div className={`absolute right-0 z-20 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900 ${
+                              isNearBottom ? 'bottom-full mb-1' : 'top-full mt-1'
+                            }`}>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setOpenMenuId(null)
+                                  onEditTransaction?.(txn.id)
+                                }}
+                                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                              >
+                                <Pencil className="h-4 w-4" />
+                                Edit Transaction
+                              </button>
+                              <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setOpenMenuId(null)
+                                  if (confirm(`Delete this ${getTransactionLabel(txn.type)} transaction?`)) {
+                                    onDeleteTransaction?.(txn.id)
+                                  }
+                                }}
+                                className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete Transaction
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="w-7" />
+                    )}
                   </td>
                 </tr>
               )
@@ -217,15 +281,18 @@ export function TransactionList({
 
       {/* Mobile list */}
       <div className="divide-y divide-slate-200 md:hidden dark:divide-slate-700">
-        {sortedTransactions.map((txn) => {
+        {sortedTransactions.map((txn, index) => {
           const Icon = getTransactionIcon(txn.type)
           const enrollmentInfo = getEnrollmentInfo(txn.enrollmentId)
+          const isDeduction = txn.type === 'deduction'
+          const isMenuOpen = openMenuId === txn.id
+          const isNearBottom = index >= sortedTransactions.length - 2
 
           return (
             <div
               key={txn.id}
-              onClick={() => onViewTransaction?.(txn.id)}
-              className="cursor-pointer p-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50"
+              onClick={() => !isDeduction && onViewTransaction?.(txn.id)}
+              className={isDeduction ? 'p-4 transition-colors' : 'cursor-pointer p-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50'}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
@@ -249,22 +316,78 @@ export function TransactionList({
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  {txn.credits !== 0 && (
-                    <p
-                      className={`text-sm font-medium ${txn.credits > 0
-                        ? 'text-emerald-600 dark:text-emerald-400'
-                        : 'text-slate-600 dark:text-slate-400'
-                        }`}
-                    >
-                      {txn.credits > 0 ? '+' : ''}
-                      {txn.credits} credit{Math.abs(txn.credits) !== 1 ? 's' : ''}
-                    </p>
-                  )}
-                  {txn.totalAmount > 0 && (
-                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                      {formatCurrency(txn.totalAmount)}
-                    </p>
+                <div className="flex items-start gap-2">
+                  <div className="text-right">
+                    {txn.credits !== 0 && (
+                      <p
+                        className={`text-sm font-medium ${txn.credits > 0
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : 'text-slate-600 dark:text-slate-400'
+                          }`}
+                      >
+                        {txn.credits > 0 ? '+' : ''}
+                        {txn.credits} credit{Math.abs(txn.credits) !== 1 ? 's' : ''}
+                      </p>
+                    )}
+                    {txn.totalAmount > 0 && (
+                      <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                        {formatCurrency(txn.totalAmount)}
+                      </p>
+                    )}
+                  </div>
+                  {!isDeduction && (
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setOpenMenuId(isMenuOpen ? null : txn.id)
+                        }}
+                        className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+
+                      {isMenuOpen && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-10"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setOpenMenuId(null)
+                            }}
+                          />
+                          <div className={`absolute right-0 z-20 w-48 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900 ${
+                            isNearBottom ? 'bottom-full mb-1' : 'top-full mt-1'
+                          }`}>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setOpenMenuId(null)
+                                onEditTransaction?.(txn.id)
+                              }}
+                              className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                            >
+                              <Pencil className="h-4 w-4" />
+                              Edit Transaction
+                            </button>
+                            <div className="my-1 border-t border-slate-200 dark:border-slate-700" />
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setOpenMenuId(null)
+                                if (confirm(`Delete this ${getTransactionLabel(txn.type)} transaction?`)) {
+                                  onDeleteTransaction?.(txn.id)
+                                }
+                              }}
+                              className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete Transaction
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
