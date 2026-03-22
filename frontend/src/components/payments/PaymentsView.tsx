@@ -30,6 +30,8 @@ export function PaymentsView({
   instruments,
   enrollments,
   onViewTransaction,
+  onEditTransaction,
+  onDeleteTransaction,
   onViewStudentHistory,
   onAddCreditPurchase,
   onAddAdjustment,
@@ -444,6 +446,8 @@ export function PaymentsView({
               instruments={instruments}
               enrollments={enrollments}
               onViewTransaction={onViewTransaction}
+              onEditTransaction={onEditTransaction}
+              onDeleteTransaction={onDeleteTransaction}
             />
           ) : (
             <StudentBalances

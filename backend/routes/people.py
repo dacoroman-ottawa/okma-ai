@@ -65,6 +65,7 @@ async def get_teachers(
             "specialization": t.specialization,
             "qualification": t.qualification,
             "active": t.active,
+            "hourlyRate": t.hourly_rate,
             "instrumentsTaught": [i.id for i in t.instruments],
             "availability": [
                 {
@@ -75,15 +76,15 @@ async def get_teachers(
             ]
         } for t in teachers
     ]
-    
+
     if current_user.role == UserRoleEnum.STUDENT:
-        # Students might need to see all teachers for enrollment, 
+        # Students might need to see all teachers for enrollment,
         # but for now let's stick to the requirement: Admins see all.
         # Actually, user said: "Teachers should see only their own students and availability"
         # Implicitly, Admins manage the list.
         if not current_user.is_admin:
             raise HTTPException(status_code=403, detail="Not authorized")
-            
+
     teachers = query.all()
     return [
         {
@@ -94,6 +95,7 @@ async def get_teachers(
             "specialization": t.specialization,
             "qualification": t.qualification,
             "active": t.active,
+            "hourlyRate": t.hourly_rate,
             "instrumentsTaught": [i.id for i in t.instruments],
             "availability": [
                 {
