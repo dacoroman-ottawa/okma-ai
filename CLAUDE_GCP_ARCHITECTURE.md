@@ -1312,6 +1312,90 @@ jobs:
 
 ---
 
-*Document Version: 1.0*
-*Last Updated: 2026-03-09*
+## Appendix: Automated Deployment with Makefile
+
+### Overview
+
+The repository includes `Makefile.gcp` for automated deployment to GCP using gcloud commands.
+
+### Files Created
+
+**Makefile.gcp** - Main deployment automation:
+- Forces user to switch to target GCP project (won't use default)
+- Creates VPC, Cloud SQL (minimal `db-f1-micro` instance), secrets
+- Exports local PostgreSQL and imports to Cloud SQL
+- Builds and deploys containers to Cloud Run
+- Sets up Load Balancer with CDN
+- Configures Identity-Aware Proxy (IAP)
+- Writes credentials to `gcp-credentials.md`
+
+**Dockerfiles:**
+- `backend/Dockerfile` - Multi-stage build for FastAPI
+- `frontend/Dockerfile` - Multi-stage build for Next.js (standalone)
+- `.dockerignore` files for both
+
+**Supporting files:**
+- `backend/requirements.txt` - Python dependencies
+- `frontend/next.config.ts` - Updated with `output: "standalone"`
+- `.gitignore` - Updated with GCP deployment files
+
+### Usage
+
+```bash
+# First, switch to your target project
+gcloud config set project YOUR_PROJECT_ID
+
+# Full setup (VPC, database, secrets, containers, load balancer, IAP)
+make -f Makefile.gcp GCP_PROJECT=YOUR_PROJECT_ID setup
+
+# Deploy updates only (rebuild and redeploy containers)
+make -f Makefile.gcp GCP_PROJECT=YOUR_PROJECT_ID deploy
+
+# Grant IAP access to a user
+make -f Makefile.gcp GCP_PROJECT=YOUR_PROJECT_ID iap-grant-access EMAIL=user@example.com
+
+# Teardown everything (requires confirmation)
+make -f Makefile.gcp GCP_PROJECT=YOUR_PROJECT_ID teardown
+
+# See all available commands
+make -f Makefile.gcp help
+```
+
+### Available Make Targets
+
+| Target | Description |
+|--------|-------------|
+| `setup` | Full initial setup (APIs, VPC, DB, secrets, deploy, LB, IAP) |
+| `deploy` | Build and deploy application updates only |
+| `teardown` | Delete ALL resources (requires confirmation) |
+| `enable-apis` | Enable required GCP APIs |
+| `create-vpc` | Create VPC network and connector |
+| `create-database` | Create Cloud SQL instance |
+| `import-database` | Import local database snapshot to Cloud SQL |
+| `create-secrets` | Create secrets in Secret Manager |
+| `build-backend` | Build and push backend container |
+| `build-frontend` | Build and push frontend container |
+| `deploy-backend` | Deploy backend to Cloud Run |
+| `deploy-frontend` | Deploy frontend to Cloud Run |
+| `setup-load-balancer` | Create load balancer with CDN |
+| `setup-iap` | Enable Identity-Aware Proxy |
+| `iap-grant-access` | Grant IAP access (requires `EMAIL=user@example.com`) |
+| `test-infrastructure` | Check all infrastructure components |
+| `test-endpoints` | Test service endpoints |
+
+### Configuration Options
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GCP_PROJECT` | (required) | Target GCP project ID |
+| `GCP_REGION` | `us-central1` | GCP region |
+| `LOCAL_DB_HOST` | `localhost` | Local PostgreSQL host for export |
+| `LOCAL_DB_PORT` | `5432` | Local PostgreSQL port |
+| `LOCAL_DB_NAME` | `kanata_academy` | Local database name |
+| `LOCAL_DB_USER` | Current user | Local database user |
+
+---
+
+*Document Version: 1.1*
+*Last Updated: 2026-04-09*
 *Author: Claude Code (Cloud Architect)*
