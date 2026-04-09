@@ -148,32 +148,148 @@ export function PaymentsView({
 
   const exportToPDF = () => {
     const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.getWidth()
 
-    doc.setFontSize(18)
-    doc.text('Transactions Report', 14, 22)
+    // Colors
+    const primaryColor: [number, number, number] = [79, 70, 229] // Indigo
+    const darkText: [number, number, number] = [30, 41, 59] // Slate-800
+    const mutedText: [number, number, number] = [100, 116, 139] // Slate-500
+    const lightBg: [number, number, number] = [248, 250, 252] // Slate-50
+
+    // Header background
+    doc.setFillColor(...primaryColor)
+    doc.rect(0, 0, pageWidth, 40, 'F')
+
+    // Header text
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(24)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Transactions Report', 14, 24)
 
     doc.setFontSize(10)
-    doc.setTextColor(100)
+    doc.setFont('helvetica', 'normal')
     const dateRange = startDate || endDate
       ? `${startDate || 'Start'} to ${endDate || 'Present'}`
       : 'All Time'
-    doc.text(`Date Range: ${dateRange}`, 14, 30)
-    doc.text(`Generated: ${new Date().toLocaleDateString('en-CA')}`, 14, 36)
+    doc.text(`Period: ${dateRange}`, 14, 34)
 
+    // Generated date on right
+    doc.text(
+      `Generated: ${new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' })}`,
+      pageWidth - 14,
+      34,
+      { align: 'right' }
+    )
+
+    // Summary cards
+    const summaryY = 50
+    const cardWidth = (pageWidth - 42) / 3
+    const cardHeight = 28
+
+    // Calculate summary for filtered transactions
+    const totalAmount = filteredTransactions
+      .filter((t) => t.totalAmount > 0)
+      .reduce((sum, t) => sum + t.totalAmount, 0)
+    const totalCredits = filteredTransactions
+      .filter((t) => t.credits > 0)
+      .reduce((sum, t) => sum + t.credits, 0)
+    const transactionCount = filteredTransactions.length
+
+    const summaryCards = [
+      { label: 'Total Revenue', value: formatCurrency(totalAmount) },
+      { label: 'Credits Purchased', value: totalCredits.toString() },
+      { label: 'Transactions', value: transactionCount.toString() },
+    ]
+
+    summaryCards.forEach((card, index) => {
+      const x = 14 + index * (cardWidth + 7)
+
+      // Card background
+      doc.setFillColor(...lightBg)
+      doc.roundedRect(x, summaryY, cardWidth, cardHeight, 3, 3, 'F')
+
+      // Card border
+      doc.setDrawColor(226, 232, 240) // Slate-200
+      doc.setLineWidth(0.5)
+      doc.roundedRect(x, summaryY, cardWidth, cardHeight, 3, 3, 'S')
+
+      // Label
+      doc.setTextColor(...mutedText)
+      doc.setFontSize(9)
+      doc.setFont('helvetica', 'normal')
+      doc.text(card.label, x + 6, summaryY + 10)
+
+      // Value
+      doc.setTextColor(...darkText)
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'bold')
+      doc.text(card.value, x + 6, summaryY + 21)
+    })
+
+    // Format date compactly for PDF
+    const formatPdfDate = (dateString: string): string => {
+      return new Date(dateString).toLocaleDateString('en-CA') // YYYY-MM-DD format
+    }
+
+    // Table data
     const tableData = filteredTransactions.map((txn) => [
-      formatDateForExport(txn.date),
+      formatPdfDate(txn.date),
       getTransactionLabel(txn.type),
       getStudentName(txn.studentId),
-      txn.credits.toString(),
-      txn.totalAmount > 0 ? formatCurrency(txn.totalAmount) : '—',
+      txn.credits > 0 ? `+${txn.credits}` : txn.credits.toString(),
+      txn.totalAmount > 0 ? `$${txn.totalAmount.toFixed(2)}` : '—',
     ])
 
+    // Modern table with compact styling
     autoTable(doc, {
-      startY: 42,
+      startY: summaryY + cardHeight + 12,
       head: [['Date', 'Type', 'Student', 'Credits', 'Amount']],
       body: tableData,
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [79, 70, 229] },
+      theme: 'plain',
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+        textColor: darkText,
+        lineColor: [226, 232, 240],
+        lineWidth: 0.1,
+        overflow: 'linebreak',
+        cellWidth: 'wrap',
+      },
+      headStyles: {
+        fillColor: primaryColor,
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 8,
+        cellPadding: 3,
+      },
+      alternateRowStyles: {
+        fillColor: lightBg,
+      },
+      columnStyles: {
+        0: { cellWidth: 22 }, // Date (YYYY-MM-DD)
+        1: { cellWidth: 26 }, // Type
+        2: { cellWidth: 'auto' }, // Student (flexible)
+        3: { cellWidth: 16, halign: 'center' }, // Credits
+        4: { cellWidth: 22, halign: 'right' }, // Amount
+      },
+      margin: { left: 14, right: 14 },
+      didDrawPage: (data) => {
+        // Footer with page number
+        const pageCount = doc.getNumberOfPages()
+        doc.setFontSize(8)
+        doc.setTextColor(...mutedText)
+        doc.text(
+          `Page ${data.pageNumber} of ${pageCount}`,
+          pageWidth / 2,
+          doc.internal.pageSize.getHeight() - 10,
+          { align: 'center' }
+        )
+        doc.text(
+          'Kanata Music Academy',
+          14,
+          doc.internal.pageSize.getHeight() - 10
+        )
+      },
     })
 
     doc.save(`transactions-${new Date().toISOString().split('T')[0]}.pdf`)
