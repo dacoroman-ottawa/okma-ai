@@ -60,3 +60,7 @@ yarn-error.log*
 gcp-credentials.md
 .gcp-deploy/
 .db_password.tmp
+
+# Docker
+pgdata/
+.env.docker

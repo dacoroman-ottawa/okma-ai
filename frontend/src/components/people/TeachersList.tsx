@@ -31,7 +31,7 @@ export function TeachersList({
       // Instrument filter
       if (
         selectedInstrument &&
-        !teacher.instrumentsTaught.includes(selectedInstrument)
+        !teacher.instrumentsTaught?.includes(selectedInstrument)
       ) {
         return false
       }
