@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import type { Teacher, Student, Instrument, Enrollment, AvailabilitySlot } from "@/types/people";
 
-import { toCamel } from "@/lib/utils";
+import { toCamel, getAuthToken, API_BASE_URL } from "@/lib/utils";
 
 export function usePeople() {
     const [teachers, setTeachers] = useState<Teacher[]>([]);
@@ -18,25 +18,14 @@ export function usePeople() {
         async function fetchData() {
             try {
                 setLoading(true);
-                // 1. Get Admin Token
-                const tokenRes = await fetch("http://localhost:8000/token", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: new URLSearchParams({
-                        username: "admin@kanatamusic.com",
-                        password: "admin123"
-                    })
-                });
-                const { access_token } = await tokenRes.json();
-
-                // 2. Fetch Data
-                const headers = { Authorization: `Bearer ${access_token}` };
+                const token = getAuthToken();
+                const headers = { Authorization: `Bearer ${token}` };
 
                 const [tchRes, stuRes, instRes, enrRes] = await Promise.all([
-                    fetch("http://localhost:8000/people/teachers", { headers }),
-                    fetch("http://localhost:8000/people/students", { headers }),
-                    fetch("http://localhost:8000/people/instruments", { headers }),
-                    fetch("http://localhost:8000/people/enrollments", { headers })
+                    fetch(`${API_BASE_URL}/people/teachers`, { headers }),
+                    fetch(`${API_BASE_URL}/people/students`, { headers }),
+                    fetch(`${API_BASE_URL}/people/instruments`, { headers }),
+                    fetch(`${API_BASE_URL}/people/enrollments`, { headers })
                 ]);
 
                 const tchData = toCamel(await tchRes.json());
@@ -73,22 +62,9 @@ export function usePeople() {
         fetchData();
     }, []);
 
-    const getAuthToken = async () => {
-        const tokenRes = await fetch("http://localhost:8000/token", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-                username: "admin@kanatamusic.com",
-                password: "admin123"
-            })
-        });
-        const { access_token } = await tokenRes.json();
-        return access_token;
-    };
-
     const updateTeacher = async (id: string, data: any) => {
-        const token = await getAuthToken();
-        const res = await fetch(`http://localhost:8000/people/teachers/${id}`, {
+        const token = getAuthToken();
+        const res = await fetch(`${API_BASE_URL}/people/teachers/${id}`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
@@ -113,8 +89,8 @@ export function usePeople() {
     };
 
     const updateStudent = async (id: string, data: any) => {
-        const token = await getAuthToken();
-        const res = await fetch(`http://localhost:8000/people/students/${id}`, {
+        const token = getAuthToken();
+        const res = await fetch(`${API_BASE_URL}/people/students/${id}`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
@@ -139,8 +115,8 @@ export function usePeople() {
     };
 
     const updateTeacherAvailability = async (id: string, slots: AvailabilitySlot[]) => {
-        const token = await getAuthToken();
-        const res = await fetch(`http://localhost:8000/people/teachers/${id}/availability`, {
+        const token = getAuthToken();
+        const res = await fetch(`${API_BASE_URL}/people/teachers/${id}/availability`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
@@ -166,8 +142,8 @@ export function usePeople() {
     };
 
     const updateStudentAvailability = async (id: string, slots: AvailabilitySlot[]) => {
-        const token = await getAuthToken();
-        const res = await fetch(`http://localhost:8000/people/students/${id}/availability`, {
+        const token = getAuthToken();
+        const res = await fetch(`${API_BASE_URL}/people/students/${id}/availability`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",

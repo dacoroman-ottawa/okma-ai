@@ -2,33 +2,20 @@
 
 import { useState, useEffect } from "react";
 import type { AppUser, CreateUserData, UpdateUserData } from "@/types/users";
-import { toCamel } from "@/lib/utils";
+import { toCamel, getAuthToken, API_BASE_URL } from "@/lib/utils";
 
 export function useUsers() {
     const [users, setUsers] = useState<AppUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const getAuthToken = async () => {
-        const tokenRes = await fetch("http://localhost:8000/token", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-                username: "admin@kanatamusic.com",
-                password: "admin123"
-            })
-        });
-        const { access_token } = await tokenRes.json();
-        return access_token;
-    };
-
     const fetchUsers = async () => {
         try {
             setLoading(true);
             setError(null);
-            const token = await getAuthToken();
+            const token = getAuthToken();
 
-            const res = await fetch("http://localhost:8000/users", {
+            const res = await fetch(`${API_BASE_URL}/users`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 
@@ -51,8 +38,8 @@ export function useUsers() {
     }, []);
 
     const createUser = async (data: CreateUserData) => {
-        const token = await getAuthToken();
-        const res = await fetch("http://localhost:8000/users", {
+        const token = getAuthToken();
+        const res = await fetch(`${API_BASE_URL}/users`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -72,8 +59,8 @@ export function useUsers() {
     };
 
     const updateUser = async (id: string, data: UpdateUserData) => {
-        const token = await getAuthToken();
-        const res = await fetch(`http://localhost:8000/users/${id}`, {
+        const token = getAuthToken();
+        const res = await fetch(`${API_BASE_URL}/users/${id}`, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
@@ -95,8 +82,8 @@ export function useUsers() {
     };
 
     const deleteUser = async (id: string) => {
-        const token = await getAuthToken();
-        const res = await fetch(`http://localhost:8000/users/${id}`, {
+        const token = getAuthToken();
+        const res = await fetch(`${API_BASE_URL}/users/${id}`, {
             method: "DELETE",
             headers: { Authorization: `Bearer ${token}` }
         });
@@ -110,8 +97,8 @@ export function useUsers() {
     };
 
     const toggleStatus = async (id: string) => {
-        const token = await getAuthToken();
-        const res = await fetch(`http://localhost:8000/users/${id}/toggle-status`, {
+        const token = getAuthToken();
+        const res = await fetch(`${API_BASE_URL}/users/${id}/toggle-status`, {
             method: "POST",
             headers: { Authorization: `Bearer ${token}` }
         });
@@ -129,8 +116,8 @@ export function useUsers() {
     };
 
     const sendResetLink = async (id: string) => {
-        const token = await getAuthToken();
-        const res = await fetch(`http://localhost:8000/users/${id}/send-reset-link`, {
+        const token = getAuthToken();
+        const res = await fetch(`${API_BASE_URL}/users/${id}/send-reset-link`, {
             method: "POST",
             headers: { Authorization: `Bearer ${token}` }
         });

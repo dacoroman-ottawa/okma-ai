@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import type { Class, AttendanceRecord, AttendanceStatus } from "@/types/classes"
-import { toCamel, toSnake } from "@/lib/utils"
+import { toCamel, toSnake, getAuthHeaders, API_BASE_URL } from "@/lib/utils"
 
 // Helper to get Monday of current week
 function getWeekStart(d: Date = new Date()): Date {
@@ -32,30 +32,14 @@ export function useClasses() {
     const [weekStart, setWeekStart] = useState<Date>(() => getWeekStart())
     const [weekEnd, setWeekEnd] = useState<Date>(() => getWeekEnd(getWeekStart()))
 
-    const getAuthHeaders = async () => {
-        const tokenRes = await fetch("http://localhost:8000/token", {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-                username: "admin@kanatamusic.com",
-                password: "admin123",
-            }),
-        })
-        const { access_token } = await tokenRes.json()
-        return {
-            Authorization: `Bearer ${access_token}`,
-            "Content-Type": "application/json"
-        }
-    }
-
     async function fetchClasses() {
         try {
             setLoading(true)
-            const headers = await getAuthHeaders()
+            const headers = getAuthHeaders()
 
             const [clsRes, attRes] = await Promise.all([
-                fetch("http://localhost:8000/classes/", { headers }),
-                fetch("http://localhost:8000/classes/attendance", { headers }),
+                fetch(`${API_BASE_URL}/classes/`, { headers }),
+                fetch(`${API_BASE_URL}/classes/attendance`, { headers }),
             ])
 
             const clsData = toCamel(await clsRes.json())
@@ -72,8 +56,8 @@ export function useClasses() {
 
     const fetchWeekAttendance = useCallback(async (start: Date, end: Date) => {
         try {
-            const headers = await getAuthHeaders()
-            const url = `http://localhost:8000/classes/attendance?week_start=${formatDate(start)}&week_end=${formatDate(end)}`
+            const headers = getAuthHeaders()
+            const url = `${API_BASE_URL}/classes/attendance?week_start=${formatDate(start)}&week_end=${formatDate(end)}`
             const res = await fetch(url, { headers })
             const data = toCamel(await res.json())
             setAttendanceRecords(data)
@@ -100,14 +84,14 @@ export function useClasses() {
         remarks?: string
     ) => {
         try {
-            const headers = await getAuthHeaders()
+            const headers = getAuthHeaders()
 
             // Support both old boolean format and new status format
             const status = typeof statusOrAttended === 'boolean'
                 ? (statusOrAttended ? 'present' : 'absent')
                 : statusOrAttended
 
-            const res = await fetch(`http://localhost:8000/classes/${classId}/attendance`, {
+            const res = await fetch(`${API_BASE_URL}/classes/${classId}/attendance`, {
                 method: "POST",
                 headers,
                 body: JSON.stringify(toSnake({ studentId, date, status, time, remarks }))
@@ -126,8 +110,8 @@ export function useClasses() {
         data: { date?: string; time?: string; status?: AttendanceStatus; remarks?: string }
     ) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch(`http://localhost:8000/classes/attendance/${attendanceId}`, {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/classes/attendance/${attendanceId}`, {
                 method: "PUT",
                 headers,
                 body: JSON.stringify(toSnake(data))
@@ -152,8 +136,8 @@ export function useClasses() {
         remarks?: string
     }) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch("http://localhost:8000/classes/attendance", {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/classes/attendance`, {
                 method: "POST",
                 headers,
                 body: JSON.stringify(toSnake(data))
@@ -174,8 +158,8 @@ export function useClasses() {
 
     const deleteAttendance = async (attendanceId: string) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch(`http://localhost:8000/classes/attendance/${attendanceId}`, {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/classes/attendance/${attendanceId}`, {
                 method: "DELETE",
                 headers,
             })
@@ -195,8 +179,8 @@ export function useClasses() {
 
     const generateWeekAttendance = async (weekStartDate: Date) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch("http://localhost:8000/classes/attendance/generate-week", {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/classes/attendance/generate-week`, {
                 method: "POST",
                 headers,
                 body: JSON.stringify({ weekStart: formatDate(weekStartDate) })
@@ -246,21 +230,9 @@ export function useClasses() {
         notes?: string
     }) => {
         try {
-            const tokenRes = await fetch("http://localhost:8000/token", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({
-                    username: "admin@kanatamusic.com",
-                    password: "admin123",
-                }),
-            })
-            const { access_token } = await tokenRes.json()
-            const headers = {
-                Authorization: `Bearer ${access_token}`,
-                "Content-Type": "application/json"
-            }
+            const headers = getAuthHeaders()
 
-            const res = await fetch("http://localhost:8000/classes/", {
+            const res = await fetch(`${API_BASE_URL}/classes/`, {
                 method: "POST",
                 headers,
                 body: JSON.stringify(data)
@@ -291,21 +263,9 @@ export function useClasses() {
         notes?: string
     }) => {
         try {
-            const tokenRes = await fetch("http://localhost:8000/token", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({
-                    username: "admin@kanatamusic.com",
-                    password: "admin123",
-                }),
-            })
-            const { access_token } = await tokenRes.json()
-            const headers = {
-                Authorization: `Bearer ${access_token}`,
-                "Content-Type": "application/json"
-            }
+            const headers = getAuthHeaders()
 
-            const res = await fetch(`http://localhost:8000/classes/${id}`, {
+            const res = await fetch(`${API_BASE_URL}/classes/${id}`, {
                 method: "PUT",
                 headers,
                 body: JSON.stringify(data)
