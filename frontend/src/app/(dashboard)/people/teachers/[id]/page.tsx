@@ -4,7 +4,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { usePeople } from "@/hooks/usePeople";
 import { TeacherDetail, TeacherEditModal, AvailabilityEditModal } from "@/components/people";
-import { toCamel } from "@/lib/utils";
+import { toCamel, getAuthToken, API_BASE_URL } from "@/lib/utils";
 import type { Teacher, AvailabilitySlot } from "@/types/people";
 
 export default function TeacherDetailPage() {
@@ -30,19 +30,10 @@ export default function TeacherDetailPage() {
         async function fetchDetail() {
             try {
                 setLoading(true);
-                // 1. Get Admin Token
-                const tokenRes = await fetch("http://localhost:8000/token", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: new URLSearchParams({
-                        username: "admin@kanatamusic.com",
-                        password: "admin123"
-                    })
-                });
-                const { access_token } = await tokenRes.json();
-                const headers = { Authorization: `Bearer ${access_token}` };
+                const token = getAuthToken();
+                const headers = { Authorization: `Bearer ${token}` };
 
-                const res = await fetch(`http://localhost:8000/people/teachers/${id}`, { headers });
+                const res = await fetch(`${API_BASE_URL}/people/teachers/${id}`, { headers });
                 const data = toCamel(await res.json());
                 setTeacher(data);
                 setLoading(false);

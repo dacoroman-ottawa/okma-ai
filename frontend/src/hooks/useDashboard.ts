@@ -8,7 +8,7 @@ import type {
     CreditAlert,
     InventoryAlert,
 } from "../types/dashboard"
-import { toCamel } from "@/lib/utils"
+import { toCamel, getAuthHeaders, API_BASE_URL } from "@/lib/utils"
 
 export function useDashboard() {
     const [metrics, setMetrics] = useState<DashboardMetrics>({
@@ -24,34 +24,12 @@ export function useDashboard() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    const getAuthHeaders = async () => {
-        try {
-            const tokenRes = await fetch("http://localhost:8000/token", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({
-                    username: "admin@kanatamusic.com",
-                    password: "admin123",
-                }),
-            })
-            if (!tokenRes.ok) throw new Error("Failed to get token")
-            const { access_token } = await tokenRes.json()
-            return {
-                Authorization: `Bearer ${access_token}`,
-                "Content-Type": "application/json",
-            }
-        } catch (err) {
-            console.error("Auth error:", err)
-            throw err
-        }
-    }
-
     const fetchData = useCallback(async () => {
         try {
             setLoading(true)
-            const headers = await getAuthHeaders()
+            const headers = getAuthHeaders()
 
-            const res = await fetch("http://localhost:8000/dashboard/summary", { headers })
+            const res = await fetch(`${API_BASE_URL}/dashboard/summary`, { headers })
 
             if (!res.ok) {
                 throw new Error("Failed to fetch dashboard data")

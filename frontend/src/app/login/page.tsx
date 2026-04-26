@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Music, Mail, Lock, AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
+import { API_BASE_URL } from "@/lib/utils";
 
 type ViewMode = "login" | "forgot-password" | "reset-sent";
 
@@ -27,7 +28,7 @@ export default function LoginPage() {
         setLoading(true);
 
         try {
-            const res = await fetch("http://localhost:8000/auth/login", {
+            const res = await fetch(`${API_BASE_URL}/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password })
@@ -59,7 +60,7 @@ export default function LoginPage() {
         setForgotLoading(true);
 
         try {
-            const res = await fetch("http://localhost:8000/auth/forgot-password", {
+            const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email: forgotEmail })

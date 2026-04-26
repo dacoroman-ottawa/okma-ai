@@ -8,7 +8,7 @@ import type {
     Rental,
     Sale,
 } from "../types/inventory"
-import { toCamel, toSnake } from "@/lib/utils"
+import { toCamel, toSnake, getAuthHeaders, API_BASE_URL } from "@/lib/utils"
 
 export function useInventory() {
     const [products, setProducts] = useState<Product[]>([])
@@ -19,39 +19,17 @@ export function useInventory() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    const getAuthHeaders = async () => {
-        try {
-            const tokenRes = await fetch("http://localhost:8000/token", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({
-                    username: "admin@kanatamusic.com",
-                    password: "admin123",
-                }),
-            })
-            if (!tokenRes.ok) throw new Error("Failed to get token")
-            const { access_token } = await tokenRes.json()
-            return {
-                Authorization: `Bearer ${access_token}`,
-                "Content-Type": "application/json",
-            }
-        } catch (err) {
-            console.error("Auth error:", err)
-            throw err
-        }
-    }
-
     const fetchData = useCallback(async () => {
         try {
             setLoading(true)
-            const headers = await getAuthHeaders()
+            const headers = getAuthHeaders()
 
             const [prodRes, suppRes, custRes, rentRes, salesRes] = await Promise.all([
-                fetch("http://localhost:8000/inventory/products", { headers }),
-                fetch("http://localhost:8000/inventory/suppliers", { headers }),
-                fetch("http://localhost:8000/inventory/customers", { headers }),
-                fetch("http://localhost:8000/inventory/rentals", { headers }),
-                fetch("http://localhost:8000/inventory/sales", { headers }),
+                fetch(`${API_BASE_URL}/inventory/products`, { headers }),
+                fetch(`${API_BASE_URL}/inventory/suppliers`, { headers }),
+                fetch(`${API_BASE_URL}/inventory/customers`, { headers }),
+                fetch(`${API_BASE_URL}/inventory/rentals`, { headers }),
+                fetch(`${API_BASE_URL}/inventory/sales`, { headers }),
             ])
 
             if (!prodRes.ok || !suppRes.ok || !custRes.ok || !rentRes.ok || !salesRes.ok) {
@@ -87,8 +65,8 @@ export function useInventory() {
     // Product operations
     const createProduct = async (data: Partial<Product>) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch("http://localhost:8000/inventory/products", {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/inventory/products`, {
                 method: "POST",
                 headers,
                 body: JSON.stringify(toSnake(data)),
@@ -105,8 +83,8 @@ export function useInventory() {
 
     const updateProduct = async (id: string, data: Partial<Product>) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch(`http://localhost:8000/inventory/products/${id}`, {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/inventory/products/${id}`, {
                 method: "PUT",
                 headers,
                 body: JSON.stringify(toSnake(data)),
@@ -123,8 +101,8 @@ export function useInventory() {
 
     const deleteProduct = async (id: string) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch(`http://localhost:8000/inventory/products/${id}`, {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/inventory/products/${id}`, {
                 method: "DELETE",
                 headers,
             })
@@ -141,8 +119,8 @@ export function useInventory() {
     // Supplier operations
     const createSupplier = async (data: Partial<Supplier>) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch("http://localhost:8000/inventory/suppliers", {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/inventory/suppliers`, {
                 method: "POST",
                 headers,
                 body: JSON.stringify(toSnake(data)),
@@ -159,8 +137,8 @@ export function useInventory() {
 
     const updateSupplier = async (id: string, data: Partial<Supplier>) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch(`http://localhost:8000/inventory/suppliers/${id}`, {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/inventory/suppliers/${id}`, {
                 method: "PUT",
                 headers,
                 body: JSON.stringify(toSnake(data)),
@@ -177,8 +155,8 @@ export function useInventory() {
 
     const deleteSupplier = async (id: string) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch(`http://localhost:8000/inventory/suppliers/${id}`, {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/inventory/suppliers/${id}`, {
                 method: "DELETE",
                 headers,
             })
@@ -195,8 +173,8 @@ export function useInventory() {
     // Customer operations
     const createCustomer = async (data: Partial<Customer>) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch("http://localhost:8000/inventory/customers", {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/inventory/customers`, {
                 method: "POST",
                 headers,
                 body: JSON.stringify(toSnake(data)),
@@ -213,8 +191,8 @@ export function useInventory() {
 
     const updateCustomer = async (id: string, data: Partial<Customer>) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch(`http://localhost:8000/inventory/customers/${id}`, {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/inventory/customers/${id}`, {
                 method: "PUT",
                 headers,
                 body: JSON.stringify(toSnake(data)),
@@ -231,8 +209,8 @@ export function useInventory() {
 
     const deleteCustomer = async (id: string) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch(`http://localhost:8000/inventory/customers/${id}`, {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/inventory/customers/${id}`, {
                 method: "DELETE",
                 headers,
             })
@@ -249,10 +227,10 @@ export function useInventory() {
     // Rental operations
     const createRental = async (data: Partial<Rental>) => {
         try {
-            const headers = await getAuthHeaders()
+            const headers = getAuthHeaders()
             const body = toSnake(data)
             console.log("Creating rental with data:", body)
-            const res = await fetch("http://localhost:8000/inventory/rentals", {
+            const res = await fetch(`${API_BASE_URL}/inventory/rentals`, {
                 method: "POST",
                 headers,
                 body: JSON.stringify(body),
@@ -273,9 +251,9 @@ export function useInventory() {
 
     const returnRental = async (id: string, conditionNotes?: string) => {
         try {
-            const headers = await getAuthHeaders()
+            const headers = getAuthHeaders()
             const body = conditionNotes ? { condition_notes: conditionNotes } : {}
-            const res = await fetch(`http://localhost:8000/inventory/rentals/${id}/return`, {
+            const res = await fetch(`${API_BASE_URL}/inventory/rentals/${id}/return`, {
                 method: "PUT",
                 headers,
                 body: JSON.stringify(body),
@@ -296,8 +274,8 @@ export function useInventory() {
 
     const updateRental = async (id: string, data: Partial<Rental>) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch(`http://localhost:8000/inventory/rentals/${id}`, {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/inventory/rentals/${id}`, {
                 method: "PUT",
                 headers,
                 body: JSON.stringify(toSnake(data)),
@@ -318,8 +296,8 @@ export function useInventory() {
 
     const deleteRental = async (id: string) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch(`http://localhost:8000/inventory/rentals/${id}`, {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/inventory/rentals/${id}`, {
                 method: "DELETE",
                 headers,
             })
@@ -340,9 +318,9 @@ export function useInventory() {
     // Sale operations
     const createSale = async (data: Partial<Sale>) => {
         try {
-            const headers = await getAuthHeaders()
+            const headers = getAuthHeaders()
             const body = toSnake(data)
-            const res = await fetch("http://localhost:8000/inventory/sales", {
+            const res = await fetch(`${API_BASE_URL}/inventory/sales`, {
                 method: "POST",
                 headers,
                 body: JSON.stringify(body),
@@ -363,8 +341,8 @@ export function useInventory() {
 
     const updateSale = async (id: string, data: Partial<Sale>) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch(`http://localhost:8000/inventory/sales/${id}`, {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/inventory/sales/${id}`, {
                 method: "PUT",
                 headers,
                 body: JSON.stringify(toSnake(data)),
@@ -381,8 +359,8 @@ export function useInventory() {
 
     const deleteSale = async (id: string) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch(`http://localhost:8000/inventory/sales/${id}`, {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/inventory/sales/${id}`, {
                 method: "DELETE",
                 headers,
             })
