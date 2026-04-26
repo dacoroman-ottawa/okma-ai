@@ -14,7 +14,7 @@ interface AvailabilitySlot {
 interface Teacher {
   id: string;
   name: string;
-  instrumentsTaught: string[];
+  instrumentsTaught?: string[];
 }
 
 interface Student {
@@ -159,7 +159,7 @@ export function NewClassModal({
     try {
       const dataToSave = {
         ...formData,
-        notes: formData.notes || null,
+        notes: formData.notes || undefined,
       };
 
       if (isEditMode && onUpdate && classToEdit) {

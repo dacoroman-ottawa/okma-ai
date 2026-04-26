@@ -34,8 +34,8 @@ RUN apt-get update && apt-get install -y \
 COPY --from=builder /root/.local /root/.local
 ENV PATH=/root/.local/bin:$PATH
 
-# Copy application code
-COPY . .
+# Copy application code as a package
+COPY . ./backend/
 
 # Cloud Run sets PORT environment variable
 ENV PORT=8080
@@ -44,5 +44,5 @@ ENV PORT=8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT}/')" || exit 1
 
-# Run the application with multiple workers for production
-CMD exec uvicorn main:app --host 0.0.0.0 --port $PORT --workers 2
+# Run the application as a module with multiple workers for production
+CMD exec uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 2

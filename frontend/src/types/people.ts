@@ -39,7 +39,7 @@ export interface Teacher {
   dateOfEnrollment: string
   socialInsuranceNumber: string
   hourlyRate: number
-  instrumentsTaught: string[]
+  instrumentsTaught?: string[]
   availability?: AvailabilitySlot[]
 }
 
@@ -52,6 +52,7 @@ export interface Student {
   dateOfBirth: string | null
   active: boolean
   skillLevels: SkillLevel[]
+  availability?: AvailabilitySlot[]
 }
 
 export interface Enrollment {

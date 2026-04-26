@@ -48,7 +48,7 @@ export interface ClassesCalendarViewProps {
     /** List of classes to display */
     classes: Class[]
     /** Teachers for resolving names */
-    teachers: Array<{ id: string; name: string; instrumentsTaught: string[] }>
+    teachers: Array<{ id: string; name: string; instrumentsTaught?: string[] }>
     /** Students for resolving names */
     students: Array<{ id: string; name: string }>
     /** Instruments for resolving names */
@@ -81,7 +81,7 @@ export interface ClassesListViewProps {
     /** List of classes to display */
     classes: Class[]
     /** Teachers for resolving names */
-    teachers: Array<{ id: string; name: string; instrumentsTaught: string[] }>
+    teachers: Array<{ id: string; name: string; instrumentsTaught?: string[] }>
     /** Students for resolving names */
     students: Array<{ id: string; name: string }>
     /** Instruments for resolving names */
@@ -104,7 +104,7 @@ export interface ClassFormProps {
     /** Existing class data if editing */
     existingClass?: Class
     /** Available teachers */
-    teachers: Array<{ id: string; name: string; instrumentsTaught: string[] }>
+    teachers: Array<{ id: string; name: string; instrumentsTaught?: string[] }>
     /** Available students */
     students: Array<{ id: string; name: string }>
     /** Available instruments */
@@ -123,7 +123,7 @@ export interface ClassesProps {
     /** List of classes */
     classes: Class[]
     /** Teachers for resolving names */
-    teachers: Array<{ id: string; name: string; instrumentsTaught: string[] }>
+    teachers: Array<{ id: string; name: string; instrumentsTaught?: string[] }>
     /** Students for resolving names */
     students: Array<{ id: string; name: string }>
     /** Instruments for resolving names */
