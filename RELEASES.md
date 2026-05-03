@@ -1,5 +1,28 @@
 # Release Notes
 
+## 2026-05-03 - Detail Page Scrolling Fix
+
+Fixed scrolling issue on teacher and student detail pages.
+
+### Bug Fix
+
+The teacher detail (`/people/teachers/{id}`) and student detail (`/people/students/{id}`) pages were not scrollable, preventing users from viewing the full content of forms with many fields.
+
+### Root Cause
+
+The `<main>` element in `AppShell.tsx` had `overflow-hidden` which prevented the content area from scrolling.
+
+### Changes
+
+- Changed `overflow-hidden` to `overflow-auto` on the main content container
+- Added `bg-slate-50 dark:bg-slate-950` background to ensure consistent appearance when scrolling
+
+### Modified Files
+
+- `frontend/src/components/shell/AppShell.tsx` - Fixed overflow and background on main container
+
+---
+
 ## 2026-04-25 - Docker API URL Fix & Non-Admin Dashboard Access
 
 Fixed Docker build to use correct API URL for browser requests and hid Dashboard from non-admin users.
