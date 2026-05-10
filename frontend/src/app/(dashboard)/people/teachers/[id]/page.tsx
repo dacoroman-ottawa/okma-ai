@@ -11,7 +11,7 @@ export default function TeacherDetailPage() {
     const { id } = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { instruments, enrollments, students, updateTeacher, updateTeacherAvailability } = usePeople();
+    const { instruments, enrollments, students, updateTeacher, updateTeacherAvailability, deleteTeacher } = usePeople();
     const [teacher, setTeacher] = useState<Teacher | null>(null);
     const [loading, setLoading] = useState(true);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -72,6 +72,24 @@ export default function TeacherDetailPage() {
         setIsAvailabilityModalOpen(true);
     };
 
+    const handleDeleteTeacher = async () => {
+        if (!teacher) return;
+
+        const confirmed = window.confirm(
+            `Are you sure you want to delete ${teacher.name}? This action cannot be undone.`
+        );
+
+        if (confirmed) {
+            try {
+                await deleteTeacher(teacher.id);
+                router.push("/people");
+            } catch (error) {
+                console.error("Failed to delete teacher:", error);
+                alert("Failed to delete teacher. Please try again.");
+            }
+        }
+    };
+
     return (
         <>
             <TeacherDetail
@@ -82,7 +100,7 @@ export default function TeacherDetailPage() {
                 students={students}
                 onBack={() => router.push("/people")}
                 onEdit={() => setIsEditModalOpen(true)}
-                onDelete={() => console.log("Delete Teacher", id)}
+                onDelete={handleDeleteTeacher}
                 onViewStudent={(studentId) => router.push(`/people/students/${studentId}`)}
             />
             <TeacherEditModal

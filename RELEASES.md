@@ -1,5 +1,57 @@
 # Release Notes
 
+## 2026-05-10 - People CRUD & Filter Enhancements
+
+Added full CRUD operations for Teachers and Students, and enhanced filter UI across People, Users, and Inventory pages.
+
+### New Features
+
+#### Teacher & Student Management
+- **Add Teacher Modal**: New modal form to create teachers with all fields (name, email, phone, qualification, instruments, etc.)
+- **Add Student Modal**: New modal form to create students with skill levels
+- **Delete Teacher**: Delete button with confirmation dialog on teacher detail page
+- **Delete Student**: Delete button with confirmation dialog on student detail page
+
+#### Filter UI Enhancements
+- **People (Teachers/Students)**: Redesigned filter bar with search, instrument dropdown, and All/Active/Inactive toggle buttons with counts. Add button moved to same line, aligned right.
+- **Users**: Added Active/Inactive filter toggle with counts, Clear button, aligned Add User button to filter row
+- **Suppliers**: Added search filter and Active/Inactive toggle with counts
+- **Customers**: Added search filter and Active/Inactive toggle with counts
+
+### New Files
+
+- `frontend/src/components/people/TeacherAddModal.tsx` - Modal for adding new teachers
+- `frontend/src/components/people/StudentAddModal.tsx` - Modal for adding new students
+
+### Backend Changes
+
+- `backend/routes/people.py`:
+  - Enhanced `POST /people/teachers` - Full teacher creation with all fields and instruments
+  - Added `POST /people/students` - Create students with skill levels
+  - Added `DELETE /people/teachers/{id}` - Delete teacher and associated user
+  - Added `DELETE /people/students/{id}` - Delete student and associated user
+
+### Frontend Changes
+
+- `frontend/src/hooks/usePeople.ts` - Implemented `addTeacher`, `addStudent`, `deleteTeacher`, `deleteStudent`
+- `frontend/src/components/people/FilterBar.tsx` - Added counts to filter buttons, search triggers Clear button
+- `frontend/src/components/people/TeachersList.tsx` - New filter layout with counts, Add button aligned right
+- `frontend/src/components/people/StudentsList.tsx` - New filter layout with counts, Add button aligned right
+- `frontend/src/components/people/index.ts` - Export new modal components
+- `frontend/src/components/users/UserAdministrationView.tsx` - Added Active/Inactive filters with counts
+- `frontend/src/components/inventory/SuppliersTab.tsx` - Added search and Active/Inactive filters
+- `frontend/src/components/inventory/CustomersTab.tsx` - Added search and Active/Inactive filters
+- `frontend/src/app/(dashboard)/people/page.tsx` - Wired up Add Teacher/Student modals
+- `frontend/src/app/(dashboard)/people/teachers/[id]/page.tsx` - Wired up delete with confirmation
+- `frontend/src/app/(dashboard)/people/students/[id]/page.tsx` - Wired up delete with confirmation
+
+### Environment
+
+- `.env` - Updated with local development database settings
+- `.env.docker` - Separated Docker-specific environment variables
+
+---
+
 ## 2026-05-03 - Detail Page Scrolling Fix
 
 Fixed scrolling issue on teacher and student detail pages.

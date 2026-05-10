@@ -12,6 +12,7 @@ import {
   Key,
   Power,
   Users,
+  X,
 } from 'lucide-react'
 import type { AppUser, UserAdministrationProps } from '@/types/users'
 
@@ -43,20 +44,39 @@ export function UserAdministrationView({
   onSendResetLink,
 }: UserAdministrationProps) {
   const [searchQuery, setSearchQuery] = useState('')
+  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
-  const filteredUsers = useMemo(() => {
-    if (!searchQuery) return users
-    const query = searchQuery.toLowerCase()
-    return users.filter(
-      (user) =>
-        user.name.toLowerCase().includes(query) ||
-        user.email.toLowerCase().includes(query)
-    )
-  }, [users, searchQuery])
-
   const activeCount = users.filter((u) => u.isActive).length
+  const inactiveCount = users.filter((u) => !u.isActive).length
   const adminCount = users.filter((u) => u.isAdmin).length
+
+  const filteredUsers = useMemo(() => {
+    return users.filter((user) => {
+      // Search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase()
+        if (
+          !user.name.toLowerCase().includes(query) &&
+          !user.email.toLowerCase().includes(query)
+        ) {
+          return false
+        }
+      }
+
+      // Active filter
+      if (activeFilter === 'active' && !user.isActive) {
+        return false
+      }
+      if (activeFilter === 'inactive' && user.isActive) {
+        return false
+      }
+
+      return true
+    })
+  }, [users, searchQuery, activeFilter])
+
+  const hasActiveFilters = searchQuery || activeFilter !== 'all'
 
   return (
     <div className="flex h-full flex-col bg-slate-50 dark:bg-slate-950">
@@ -64,42 +84,95 @@ export function UserAdministrationView({
       <div className="shrink-0 bg-slate-50 dark:bg-slate-950">
         <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
           {/* Header */}
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                User Administration
-              </h1>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                {users.length} users, {activeCount} active, {adminCount} admin
-                {adminCount !== 1 ? 's' : ''}
-              </p>
-            </div>
-
-            <button
-              onClick={onAddUser}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md active:scale-[0.98]"
-            >
-              <Plus className="h-4 w-4" />
-              Add User
-            </button>
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              User Administration
+            </h1>
+            <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              {users.length} users, {adminCount} admin{adminCount !== 1 ? 's' : ''}
+            </p>
           </div>
 
-          {/* Search */}
+          {/* Filters */}
           <div className="mb-6">
-            <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search by name or email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
-              />
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              {/* Filters group */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center flex-1">
+                {/* Search input */}
+                <div className="relative flex-1 sm:max-w-sm">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Search by name or email..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-indigo-500 dark:focus:ring-indigo-900"
+                  />
+                </div>
+
+                {/* Active/Inactive toggle */}
+                <div className="flex items-center gap-2">
+                  <div className="flex h-10 items-center rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
+                    <button
+                      onClick={() => setActiveFilter('all')}
+                      className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                        activeFilter === 'all'
+                          ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                          : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
+                      }`}
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={() => setActiveFilter('active')}
+                      className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                        activeFilter === 'active'
+                          ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                          : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
+                      }`}
+                    >
+                      Active ({activeCount})
+                    </button>
+                    <button
+                      onClick={() => setActiveFilter('inactive')}
+                      className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                        activeFilter === 'inactive'
+                          ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                          : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
+                      }`}
+                    >
+                      Inactive ({inactiveCount})
+                    </button>
+                  </div>
+
+                  {/* Clear filters */}
+                  {hasActiveFilters && (
+                    <button
+                      onClick={() => {
+                        setSearchQuery('')
+                        setActiveFilter('all')
+                      }}
+                      className="flex h-10 items-center gap-1 rounded-lg px-3 text-sm text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                    >
+                      <X className="h-4 w-4" />
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <button
+                onClick={onAddUser}
+                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md active:scale-[0.98]"
+              >
+                <Plus className="h-4 w-4" />
+                Add User
+              </button>
             </div>
           </div>
 
           {/* Results count when filtered */}
-          {searchQuery && (
+          {hasActiveFilters && (
             <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
               Showing {filteredUsers.length} of {users.length} users
             </p>
@@ -115,11 +188,11 @@ export function UserAdministrationView({
             <div className="rounded-xl border border-slate-200 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-900">
               <Users className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
               <h3 className="mt-4 text-lg font-medium text-slate-900 dark:text-slate-100">
-                {searchQuery ? 'No users found' : 'No users yet'}
+                {hasActiveFilters ? 'No users found' : 'No users yet'}
               </h3>
               <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-                {searchQuery
-                  ? 'Try adjusting your search'
+                {hasActiveFilters
+                  ? 'Try adjusting your filters'
                   : 'Add your first user to get started'}
               </p>
             </div>
