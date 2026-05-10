@@ -1,5 +1,23 @@
 # Release Notes
 
+## 2026-05-10 - Delete User Role-Based Behavior
+
+Added role-based delete functionality to the Users page.
+
+### Features
+
+- **Delete Admin User**: Confirmation dialog before deletion (matching Teacher/Student delete pattern)
+- **Delete Teacher/Student User**: Shows alert directing user to delete in the Teachers/Students screen instead
+
+### Frontend Changes
+
+- `frontend/src/app/(dashboard)/users/page.tsx`:
+  - Role-based delete handling: Admin users can be deleted with confirmation, Teacher/Student users show redirect message
+  - Changed from double-click confirmation to `window.confirm()` dialog for consistency
+  - Removed unused delete confirmation toast
+
+---
+
 ## 2026-05-10 - People CRUD & Filter Enhancements
 
 Added full CRUD operations for Teachers and Students, and enhanced filter UI across People, Users, and Inventory pages.
