@@ -21,7 +21,6 @@ export default function UsersPage() {
     const [modalOpen, setModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<"add" | "edit">("add");
     const [selectedUser, setSelectedUser] = useState<AppUser | null>(null);
-    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
     const handleAddUser = () => {
         setSelectedUser(null);
@@ -47,12 +46,31 @@ export default function UsersPage() {
     };
 
     const handleDeleteUser = async (userId: string) => {
-        if (deleteConfirmId === userId) {
-            await deleteUser(userId);
-            setDeleteConfirmId(null);
-        } else {
-            setDeleteConfirmId(userId);
-            setTimeout(() => setDeleteConfirmId(null), 3000);
+        const user = getUser(userId);
+        if (!user) return;
+
+        // For teacher or student roles, direct to the appropriate screen
+        if (user.role === 'teacher') {
+            alert("Delete this Teacher in the Teachers screen.");
+            return;
+        }
+        if (user.role === 'student') {
+            alert("Delete this Student in the Students screen.");
+            return;
+        }
+
+        // For admin users, use window.confirm before deleting
+        const confirmed = window.confirm(
+            `Are you sure you want to delete ${user.name}? This action cannot be undone.`
+        );
+
+        if (confirmed) {
+            try {
+                await deleteUser(userId);
+            } catch (error) {
+                console.error("Failed to delete user:", error);
+                alert("Failed to delete user. Please try again.");
+            }
         }
     };
 
@@ -112,15 +130,6 @@ export default function UsersPage() {
                 user={selectedUser}
                 mode={modalMode}
             />
-
-            {/* Delete confirmation toast */}
-            {deleteConfirmId && (
-                <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 transform">
-                    <div className="rounded-lg bg-red-600 px-4 py-3 text-white shadow-lg">
-                        <p className="text-sm">Click delete again to confirm</p>
-                    </div>
-                </div>
-            )}
         </>
     );
 }
