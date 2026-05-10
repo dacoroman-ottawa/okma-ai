@@ -10,8 +10,10 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Python lib directories (but not frontend/src/lib)
+/lib/
 lib64/
+!frontend/src/lib/
 parts/
 sdist/
 var/
@@ -55,3 +57,12 @@ yarn-error.log*
 
 # test databases
 *.db
+
+# GCP deployment
+gcp-credentials.md
+.gcp-deploy/
+.db_password.tmp
+
+# Docker
+pgdata/
+.env.docker

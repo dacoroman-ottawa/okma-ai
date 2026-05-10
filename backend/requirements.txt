@@ -1,0 +1,22 @@
+# FastAPI and server
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+
+# Database
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.9
+
+# Authentication
+python-jose[cryptography]>=3.3.0
+bcrypt>=4.1.0
+
+# Validation and settings
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# Environment
+python-dotenv>=1.0.0
+
+# Cloud SQL connector (for GCP)
+cloud-sql-python-connector[pg8000]>=1.4.0

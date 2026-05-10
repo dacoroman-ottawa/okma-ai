@@ -1,0 +1,797 @@
+# =============================================================================
+# KanataMusicAcademy - GCP Deployment Makefile
+# =============================================================================
+# This Makefile automates the deployment of the application to Google Cloud Platform
+# using Cloud Run for compute and Cloud SQL for the database.
+#
+# Usage:
+#   make -f Makefile.gcp setup           # Full initial setup
+#   make -f Makefile.gcp deploy          # Deploy application updates
+#   make -f Makefile.gcp teardown        # Destroy all resources
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Configuration - MUST be set by user
+# -----------------------------------------------------------------------------
+# Override these via command line: make -f Makefile.gcp GCP_PROJECT=my-project ...
+GCP_PROJECT ?=
+GCP_REGION ?= us-central1
+GCP_ZONE ?= $(GCP_REGION)-a
+
+# Application settings
+APP_NAME := kanata-academy
+DB_INSTANCE_NAME := $(APP_NAME)-db
+DB_NAME := kanata_academy
+DB_USER := kanata_app
+VPC_NAME := $(APP_NAME)-vpc
+VPC_CONNECTOR := $(APP_NAME)-connector
+ARTIFACT_REPO := $(APP_NAME)-repo
+
+# Cloud SQL minimal instance (db-f1-micro is the smallest)
+DB_TIER := db-f1-micro
+DB_STORAGE_SIZE := 10GB
+
+# Cloud Run settings
+BACKEND_CPU := 1
+BACKEND_MEMORY := 512Mi
+BACKEND_MIN_INSTANCES := 0
+BACKEND_MAX_INSTANCES := 5
+FRONTEND_CPU := 1
+FRONTEND_MEMORY := 256Mi
+FRONTEND_MIN_INSTANCES := 0
+FRONTEND_MAX_INSTANCES := 5
+
+# Local database settings (for export)
+LOCAL_DB_HOST ?= localhost
+LOCAL_DB_PORT ?= 5432
+LOCAL_DB_NAME ?= kanata_academy
+LOCAL_DB_USER ?= $(USER)
+
+# Credentials output file
+CREDENTIALS_FILE := gcp-credentials.md
+
+# Colors for output
+RED := \033[0;31m
+GREEN := \033[0;32m
+YELLOW := \033[1;33m
+NC := \033[0m
+
+# -----------------------------------------------------------------------------
+# Validation
+# -----------------------------------------------------------------------------
+.PHONY: validate-project
+validate-project:
+	@if [ -z "$(GCP_PROJECT)" ]; then \
+		echo "$(RED)ERROR: GCP_PROJECT is not set$(NC)"; \
+		echo ""; \
+		echo "Usage: make -f Makefile.gcp GCP_PROJECT=your-project-id <target>"; \
+		echo ""; \
+		echo "IMPORTANT: Do not use a project that contains other important resources."; \
+		echo "Create a dedicated project for this deployment."; \
+		exit 1; \
+	fi
+	@echo "$(YELLOW)Validating GCP project: $(GCP_PROJECT)$(NC)"
+	@CURRENT_PROJECT=$$(gcloud config get-value project 2>/dev/null); \
+	if [ "$$CURRENT_PROJECT" != "$(GCP_PROJECT)" ]; then \
+		echo "$(RED)ERROR: Current gcloud project ($$CURRENT_PROJECT) does not match target project ($(GCP_PROJECT))$(NC)"; \
+		echo ""; \
+		echo "Please switch to the target project first:"; \
+		echo "  gcloud config set project $(GCP_PROJECT)"; \
+		echo ""; \
+		echo "Or create a new project:"; \
+		echo "  gcloud projects create $(GCP_PROJECT) --name=\"Kanata Music Academy\""; \
+		echo "  gcloud config set project $(GCP_PROJECT)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)Project validated: $(GCP_PROJECT)$(NC)"
+
+# -----------------------------------------------------------------------------
+# Full Setup (run once)
+# -----------------------------------------------------------------------------
+.PHONY: setup
+setup: validate-project enable-apis create-vpc create-artifact-registry create-database create-secrets build-and-deploy setup-load-balancer setup-iap write-credentials
+	@echo "$(GREEN)========================================$(NC)"
+	@echo "$(GREEN)Setup complete!$(NC)"
+	@echo "$(GREEN)========================================$(NC)"
+	@echo ""
+	@echo "Credentials saved to: $(CREDENTIALS_FILE)"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  1. Configure DNS to point to the load balancer IP"
+	@echo "  2. Wait for SSL certificate provisioning (may take 15-60 minutes)"
+	@echo "  3. Access the application at your configured domain"
+
+# -----------------------------------------------------------------------------
+# Enable Required APIs
+# -----------------------------------------------------------------------------
+.PHONY: enable-apis
+enable-apis: validate-project
+	@echo "$(YELLOW)Enabling required GCP APIs...$(NC)"
+	gcloud services enable \
+		run.googleapis.com \
+		sqladmin.googleapis.com \
+		secretmanager.googleapis.com \
+		cloudbuild.googleapis.com \
+		artifactregistry.googleapis.com \
+		compute.googleapis.com \
+		vpcaccess.googleapis.com \
+		iap.googleapis.com \
+		cloudresourcemanager.googleapis.com \
+		iam.googleapis.com \
+		--project=$(GCP_PROJECT)
+	@echo "$(GREEN)APIs enabled$(NC)"
+
+# -----------------------------------------------------------------------------
+# VPC Network Setup
+# -----------------------------------------------------------------------------
+.PHONY: create-vpc
+create-vpc: validate-project
+	@echo "$(YELLOW)Creating VPC network...$(NC)"
+	-gcloud compute networks create $(VPC_NAME) \
+		--subnet-mode=custom \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "VPC already exists"
+
+	@echo "$(YELLOW)Creating subnet...$(NC)"
+	-gcloud compute networks subnets create $(APP_NAME)-subnet \
+		--network=$(VPC_NAME) \
+		--region=$(GCP_REGION) \
+		--range=10.0.0.0/24 \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "Subnet already exists"
+
+	@echo "$(YELLOW)Creating VPC connector for Cloud Run...$(NC)"
+	-gcloud compute networks vpc-access connectors create $(VPC_CONNECTOR) \
+		--region=$(GCP_REGION) \
+		--subnet=$(APP_NAME)-subnet \
+		--subnet-project=$(GCP_PROJECT) \
+		--min-instances=2 \
+		--max-instances=3 \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "VPC connector already exists"
+
+	@echo "$(YELLOW)Reserving static IP for load balancer...$(NC)"
+	-gcloud compute addresses create $(APP_NAME)-lb-ip \
+		--global \
+		--ip-version=IPV4 \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "Static IP already exists"
+
+	@echo "$(GREEN)VPC setup complete$(NC)"
+
+# -----------------------------------------------------------------------------
+# Artifact Registry
+# -----------------------------------------------------------------------------
+.PHONY: create-artifact-registry
+create-artifact-registry: validate-project
+	@echo "$(YELLOW)Creating Artifact Registry repository...$(NC)"
+	-gcloud artifacts repositories create $(ARTIFACT_REPO) \
+		--repository-format=docker \
+		--location=$(GCP_REGION) \
+		--description="Kanata Music Academy container images" \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "Repository already exists"
+
+	@echo "$(YELLOW)Configuring Docker authentication...$(NC)"
+	gcloud auth configure-docker $(GCP_REGION)-docker.pkg.dev --quiet
+	@echo "$(GREEN)Artifact Registry ready$(NC)"
+
+# -----------------------------------------------------------------------------
+# Cloud SQL Database
+# -----------------------------------------------------------------------------
+.PHONY: create-database
+create-database: validate-project export-local-db
+	@echo "$(YELLOW)Creating Cloud SQL instance (this may take 5-10 minutes)...$(NC)"
+
+	# Generate random password
+	$(eval DB_PASSWORD := $(shell openssl rand -base64 24 | tr -dc 'a-zA-Z0-9' | head -c 32))
+
+	# Create Cloud SQL instance with private IP
+	-gcloud sql instances create $(DB_INSTANCE_NAME) \
+		--database-version=POSTGRES_15 \
+		--tier=$(DB_TIER) \
+		--region=$(GCP_REGION) \
+		--storage-type=SSD \
+		--storage-size=$(DB_STORAGE_SIZE) \
+		--storage-auto-increase \
+		--backup-start-time=02:00 \
+		--maintenance-window-day=SUN \
+		--maintenance-window-hour=03 \
+		--network=projects/$(GCP_PROJECT)/global/networks/$(VPC_NAME) \
+		--no-assign-ip \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "Instance already exists"
+
+	@echo "$(YELLOW)Creating database...$(NC)"
+	-gcloud sql databases create $(DB_NAME) \
+		--instance=$(DB_INSTANCE_NAME) \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "Database already exists"
+
+	@echo "$(YELLOW)Creating database user...$(NC)"
+	-gcloud sql users create $(DB_USER) \
+		--instance=$(DB_INSTANCE_NAME) \
+		--password="$(DB_PASSWORD)" \
+		--project=$(GCP_PROJECT) 2>/dev/null || \
+		gcloud sql users set-password $(DB_USER) \
+			--instance=$(DB_INSTANCE_NAME) \
+			--password="$(DB_PASSWORD)" \
+			--project=$(GCP_PROJECT)
+
+	@echo "$(DB_PASSWORD)" > .db_password.tmp
+	@echo "$(GREEN)Cloud SQL instance created$(NC)"
+
+.PHONY: export-local-db
+export-local-db:
+	@echo "$(YELLOW)Exporting local database...$(NC)"
+	@mkdir -p .gcp-deploy
+	PGPASSWORD= pg_dump -h $(LOCAL_DB_HOST) -p $(LOCAL_DB_PORT) -U $(LOCAL_DB_USER) -d $(LOCAL_DB_NAME) \
+		--no-owner --no-acl --clean --if-exists \
+		-f .gcp-deploy/db_snapshot.sql 2>/dev/null || \
+		(echo "$(YELLOW)Warning: Could not export local database. Skipping...$(NC)" && touch .gcp-deploy/db_snapshot.sql)
+	@echo "$(GREEN)Database export complete$(NC)"
+
+.PHONY: import-database
+import-database: validate-project
+	@echo "$(YELLOW)Importing database to Cloud SQL...$(NC)"
+	@if [ -s .gcp-deploy/db_snapshot.sql ]; then \
+		echo "Uploading snapshot to Cloud Storage..."; \
+		gsutil mb -p $(GCP_PROJECT) gs://$(GCP_PROJECT)-db-import 2>/dev/null || true; \
+		gsutil cp .gcp-deploy/db_snapshot.sql gs://$(GCP_PROJECT)-db-import/; \
+		echo "Granting access to Cloud SQL service account..."; \
+		SA=$$(gcloud sql instances describe $(DB_INSTANCE_NAME) --project=$(GCP_PROJECT) --format='value(serviceAccountEmailAddress)'); \
+		gsutil iam ch serviceAccount:$$SA:objectViewer gs://$(GCP_PROJECT)-db-import; \
+		echo "Importing data..."; \
+		gcloud sql import sql $(DB_INSTANCE_NAME) gs://$(GCP_PROJECT)-db-import/db_snapshot.sql \
+			--database=$(DB_NAME) \
+			--project=$(GCP_PROJECT) \
+			--quiet || echo "Import may have warnings, check Cloud Console"; \
+		echo "$(GREEN)Database import complete$(NC)"; \
+	else \
+		echo "$(YELLOW)No database snapshot found, skipping import$(NC)"; \
+	fi
+
+# -----------------------------------------------------------------------------
+# Secret Manager
+# -----------------------------------------------------------------------------
+.PHONY: create-secrets
+create-secrets: validate-project
+	@echo "$(YELLOW)Creating secrets in Secret Manager...$(NC)"
+
+	# Read password from temp file
+	$(eval DB_PASSWORD := $(shell cat .db_password.tmp 2>/dev/null || echo "change-me-immediately"))
+
+	# Database URL
+	@echo -n "postgresql://$(DB_USER):$(DB_PASSWORD)@/$(DB_NAME)?host=/cloudsql/$(GCP_PROJECT):$(GCP_REGION):$(DB_INSTANCE_NAME)" | \
+		gcloud secrets create database-url --data-file=- --replication-policy="automatic" --project=$(GCP_PROJECT) 2>/dev/null || \
+		(echo -n "postgresql://$(DB_USER):$(DB_PASSWORD)@/$(DB_NAME)?host=/cloudsql/$(GCP_PROJECT):$(GCP_REGION):$(DB_INSTANCE_NAME)" | \
+		gcloud secrets versions add database-url --data-file=- --project=$(GCP_PROJECT))
+
+	# JWT Secret
+	@openssl rand -base64 64 | tr -d '\n' | \
+		gcloud secrets create jwt-secret --data-file=- --replication-policy="automatic" --project=$(GCP_PROJECT) 2>/dev/null || \
+		echo "jwt-secret already exists"
+
+	# Database password (standalone)
+	@echo -n "$(DB_PASSWORD)" | \
+		gcloud secrets create db-password --data-file=- --replication-policy="automatic" --project=$(GCP_PROJECT) 2>/dev/null || \
+		(echo -n "$(DB_PASSWORD)" | \
+		gcloud secrets versions add db-password --data-file=- --project=$(GCP_PROJECT))
+
+	@echo "$(GREEN)Secrets created$(NC)"
+
+# -----------------------------------------------------------------------------
+# Build and Deploy Containers
+# -----------------------------------------------------------------------------
+.PHONY: build-and-deploy
+build-and-deploy: build-backend build-frontend deploy-backend deploy-frontend
+	@echo "$(GREEN)Build and deploy complete$(NC)"
+
+.PHONY: build-backend
+build-backend: validate-project
+	@echo "$(YELLOW)Building backend container...$(NC)"
+	docker build -t $(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT)/$(ARTIFACT_REPO)/backend:latest \
+		-f backend/Dockerfile ./backend
+	docker push $(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT)/$(ARTIFACT_REPO)/backend:latest
+	@echo "$(GREEN)Backend container built and pushed$(NC)"
+
+.PHONY: build-frontend
+build-frontend: validate-project
+	@echo "$(YELLOW)Building frontend container...$(NC)"
+	docker build -t $(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT)/$(ARTIFACT_REPO)/frontend:latest \
+		-f frontend/Dockerfile ./frontend
+	docker push $(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT)/$(ARTIFACT_REPO)/frontend:latest
+	@echo "$(GREEN)Frontend container built and pushed$(NC)"
+
+.PHONY: deploy-backend
+deploy-backend: validate-project create-service-accounts
+	@echo "$(YELLOW)Deploying backend to Cloud Run...$(NC)"
+	gcloud run deploy backend \
+		--image=$(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT)/$(ARTIFACT_REPO)/backend:latest \
+		--region=$(GCP_REGION) \
+		--platform=managed \
+		--allow-unauthenticated \
+		--set-env-vars="ENVIRONMENT=production" \
+		--set-secrets="DATABASE_URL=database-url:latest,JWT_SECRET=jwt-secret:latest" \
+		--add-cloudsql-instances=$(GCP_PROJECT):$(GCP_REGION):$(DB_INSTANCE_NAME) \
+		--vpc-connector=$(VPC_CONNECTOR) \
+		--cpu=$(BACKEND_CPU) \
+		--memory=$(BACKEND_MEMORY) \
+		--min-instances=$(BACKEND_MIN_INSTANCES) \
+		--max-instances=$(BACKEND_MAX_INSTANCES) \
+		--concurrency=80 \
+		--timeout=60s \
+		--service-account=backend-sa@$(GCP_PROJECT).iam.gserviceaccount.com \
+		--project=$(GCP_PROJECT)
+	@echo "$(GREEN)Backend deployed$(NC)"
+
+.PHONY: deploy-frontend
+deploy-frontend: validate-project create-service-accounts
+	@echo "$(YELLOW)Deploying frontend to Cloud Run...$(NC)"
+	$(eval BACKEND_URL := $(shell gcloud run services describe backend --region=$(GCP_REGION) --project=$(GCP_PROJECT) --format='value(status.url)' 2>/dev/null || echo "https://backend-placeholder"))
+	gcloud run deploy frontend \
+		--image=$(GCP_REGION)-docker.pkg.dev/$(GCP_PROJECT)/$(ARTIFACT_REPO)/frontend:latest \
+		--region=$(GCP_REGION) \
+		--platform=managed \
+		--allow-unauthenticated \
+		--set-env-vars="NEXT_PUBLIC_API_URL=$(BACKEND_URL)" \
+		--cpu=$(FRONTEND_CPU) \
+		--memory=$(FRONTEND_MEMORY) \
+		--min-instances=$(FRONTEND_MIN_INSTANCES) \
+		--max-instances=$(FRONTEND_MAX_INSTANCES) \
+		--concurrency=100 \
+		--timeout=60s \
+		--service-account=frontend-sa@$(GCP_PROJECT).iam.gserviceaccount.com \
+		--project=$(GCP_PROJECT)
+	@echo "$(GREEN)Frontend deployed$(NC)"
+
+.PHONY: create-service-accounts
+create-service-accounts: validate-project
+	@echo "$(YELLOW)Creating service accounts...$(NC)"
+
+	# Backend service account
+	-gcloud iam service-accounts create backend-sa \
+		--display-name="Backend Service Account" \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "backend-sa already exists"
+
+	# Grant Cloud SQL client role
+	-gcloud projects add-iam-policy-binding $(GCP_PROJECT) \
+		--member="serviceAccount:backend-sa@$(GCP_PROJECT).iam.gserviceaccount.com" \
+		--role="roles/cloudsql.client" \
+		--quiet 2>/dev/null
+
+	# Grant Secret Manager access
+	-gcloud projects add-iam-policy-binding $(GCP_PROJECT) \
+		--member="serviceAccount:backend-sa@$(GCP_PROJECT).iam.gserviceaccount.com" \
+		--role="roles/secretmanager.secretAccessor" \
+		--quiet 2>/dev/null
+
+	# Frontend service account
+	-gcloud iam service-accounts create frontend-sa \
+		--display-name="Frontend Service Account" \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "frontend-sa already exists"
+
+	@echo "$(GREEN)Service accounts configured$(NC)"
+
+# -----------------------------------------------------------------------------
+# Load Balancer Setup
+# -----------------------------------------------------------------------------
+.PHONY: setup-load-balancer
+setup-load-balancer: validate-project create-serverless-negs create-backend-services create-url-map create-ssl-cert
+	@echo "$(GREEN)Load balancer setup complete$(NC)"
+
+.PHONY: create-serverless-negs
+create-serverless-negs: validate-project
+	@echo "$(YELLOW)Creating Serverless NEGs...$(NC)"
+
+	-gcloud compute network-endpoint-groups create backend-neg \
+		--region=$(GCP_REGION) \
+		--network-endpoint-type=serverless \
+		--cloud-run-service=backend \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "backend-neg already exists"
+
+	-gcloud compute network-endpoint-groups create frontend-neg \
+		--region=$(GCP_REGION) \
+		--network-endpoint-type=serverless \
+		--cloud-run-service=frontend \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "frontend-neg already exists"
+
+	@echo "$(GREEN)Serverless NEGs created$(NC)"
+
+.PHONY: create-backend-services
+create-backend-services: validate-project
+	@echo "$(YELLOW)Creating backend services...$(NC)"
+
+	# Backend API service
+	-gcloud compute backend-services create backend-api \
+		--global \
+		--load-balancing-scheme=EXTERNAL_MANAGED \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "backend-api already exists"
+
+	-gcloud compute backend-services add-backend backend-api \
+		--global \
+		--network-endpoint-group=backend-neg \
+		--network-endpoint-group-region=$(GCP_REGION) \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "Backend already added"
+
+	# Frontend service with CDN
+	-gcloud compute backend-services create backend-frontend \
+		--global \
+		--load-balancing-scheme=EXTERNAL_MANAGED \
+		--enable-cdn \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "backend-frontend already exists"
+
+	-gcloud compute backend-services add-backend backend-frontend \
+		--global \
+		--network-endpoint-group=frontend-neg \
+		--network-endpoint-group-region=$(GCP_REGION) \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "Backend already added"
+
+	@echo "$(GREEN)Backend services created$(NC)"
+
+.PHONY: create-url-map
+create-url-map: validate-project
+	@echo "$(YELLOW)Creating URL map...$(NC)"
+
+	-gcloud compute url-maps create $(APP_NAME)-lb \
+		--default-service=backend-frontend \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "URL map already exists"
+
+	# Add path matcher for API routes
+	-gcloud compute url-maps add-path-matcher $(APP_NAME)-lb \
+		--path-matcher-name=api-paths \
+		--default-service=backend-frontend \
+		--path-rules="/api/*=backend-api,/token=backend-api,/docs=backend-api,/openapi.json=backend-api" \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "Path matcher already exists"
+
+	@echo "$(GREEN)URL map created$(NC)"
+
+.PHONY: create-ssl-cert
+create-ssl-cert: validate-project
+	@echo "$(YELLOW)Creating SSL certificate and HTTPS proxy...$(NC)"
+	@echo "$(YELLOW)Note: You need to update the domain names below$(NC)"
+
+	# For now, create without managed cert (user needs to configure domain)
+	-gcloud compute target-https-proxies create $(APP_NAME)-https-proxy \
+		--url-map=$(APP_NAME)-lb \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "HTTPS proxy already exists"
+
+	# Create HTTP proxy for redirect
+	-gcloud compute url-maps create $(APP_NAME)-http-redirect \
+		--default-url-redirect \
+		--default-redirect-https \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "HTTP redirect already exists"
+
+	-gcloud compute target-http-proxies create $(APP_NAME)-http-proxy \
+		--url-map=$(APP_NAME)-http-redirect \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "HTTP proxy already exists"
+
+	# Create forwarding rules
+	$(eval LB_IP := $(shell gcloud compute addresses describe $(APP_NAME)-lb-ip --global --project=$(GCP_PROJECT) --format='value(address)' 2>/dev/null))
+
+	-gcloud compute forwarding-rules create $(APP_NAME)-https-rule \
+		--global \
+		--target-https-proxy=$(APP_NAME)-https-proxy \
+		--address=$(APP_NAME)-lb-ip \
+		--ports=443 \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "HTTPS forwarding rule already exists"
+
+	-gcloud compute forwarding-rules create $(APP_NAME)-http-rule \
+		--global \
+		--target-http-proxy=$(APP_NAME)-http-proxy \
+		--address=$(APP_NAME)-lb-ip \
+		--ports=80 \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "HTTP forwarding rule already exists"
+
+	@echo "$(GREEN)Load balancer IP: $(LB_IP)$(NC)"
+	@echo "$(GREEN)SSL/HTTPS setup complete$(NC)"
+
+# -----------------------------------------------------------------------------
+# Identity-Aware Proxy (IAP)
+# -----------------------------------------------------------------------------
+.PHONY: setup-iap
+setup-iap: validate-project
+	@echo "$(YELLOW)Setting up Identity-Aware Proxy...$(NC)"
+
+	# Enable IAP on backend services
+	@echo "$(YELLOW)Enabling IAP on backend API service...$(NC)"
+	-gcloud compute backend-services update backend-api \
+		--global \
+		--iap=enabled \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "IAP update may require OAuth consent screen configuration"
+
+	@echo "$(YELLOW)Enabling IAP on frontend service...$(NC)"
+	-gcloud compute backend-services update backend-frontend \
+		--global \
+		--iap=enabled \
+		--project=$(GCP_PROJECT) 2>/dev/null || echo "IAP update may require OAuth consent screen configuration"
+
+	@echo ""
+	@echo "$(YELLOW)========================================$(NC)"
+	@echo "$(YELLOW)IAP Configuration Required:$(NC)"
+	@echo "$(YELLOW)========================================$(NC)"
+	@echo ""
+	@echo "1. Go to: https://console.cloud.google.com/security/iap?project=$(GCP_PROJECT)"
+	@echo ""
+	@echo "2. Configure OAuth consent screen if not done:"
+	@echo "   https://console.cloud.google.com/apis/credentials/consent?project=$(GCP_PROJECT)"
+	@echo ""
+	@echo "3. Create OAuth 2.0 credentials:"
+	@echo "   https://console.cloud.google.com/apis/credentials?project=$(GCP_PROJECT)"
+	@echo ""
+	@echo "4. Grant IAP access to users:"
+	@echo "   gcloud iap web add-iam-policy-binding \\"
+	@echo "     --member='user:email@example.com' \\"
+	@echo "     --role='roles/iap.httpsResourceAccessor' \\"
+	@echo "     --project=$(GCP_PROJECT)"
+	@echo ""
+	@echo "$(GREEN)IAP setup initiated$(NC)"
+
+.PHONY: iap-grant-access
+iap-grant-access: validate-project
+	@if [ -z "$(EMAIL)" ]; then \
+		echo "$(RED)ERROR: EMAIL is not set$(NC)"; \
+		echo "Usage: make -f Makefile.gcp iap-grant-access EMAIL=user@example.com"; \
+		exit 1; \
+	fi
+	@echo "$(YELLOW)Granting IAP access to $(EMAIL)...$(NC)"
+	gcloud iap web add-iam-policy-binding \
+		--member="user:$(EMAIL)" \
+		--role="roles/iap.httpsResourceAccessor" \
+		--project=$(GCP_PROJECT)
+	@echo "$(GREEN)IAP access granted to $(EMAIL)$(NC)"
+
+# -----------------------------------------------------------------------------
+# Write Credentials
+# -----------------------------------------------------------------------------
+.PHONY: write-credentials
+write-credentials: validate-project
+	@echo "$(YELLOW)Writing credentials to $(CREDENTIALS_FILE)...$(NC)"
+	@DB_PASSWORD=$$(cat .db_password.tmp 2>/dev/null || echo "unknown"); \
+	LB_IP=$$(gcloud compute addresses describe $(APP_NAME)-lb-ip --global --project=$(GCP_PROJECT) --format='value(address)' 2>/dev/null || echo "pending"); \
+	BACKEND_URL=$$(gcloud run services describe backend --region=$(GCP_REGION) --project=$(GCP_PROJECT) --format='value(status.url)' 2>/dev/null || echo "pending"); \
+	FRONTEND_URL=$$(gcloud run services describe frontend --region=$(GCP_REGION) --project=$(GCP_PROJECT) --format='value(status.url)' 2>/dev/null || echo "pending"); \
+	DEPLOY_DATE=$$(date -u +"%Y-%m-%d %H:%M:%S UTC"); \
+	echo "# KanataMusicAcademy - GCP Deployment Credentials" > $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "> **WARNING**: This file contains sensitive credentials. Do not commit to version control." >> $(CREDENTIALS_FILE); \
+	echo "> Add \`gcp-credentials.md\` to your \`.gitignore\` file." >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "## Project Information" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "| Setting | Value |" >> $(CREDENTIALS_FILE); \
+	echo "|---------|-------|" >> $(CREDENTIALS_FILE); \
+	echo "| GCP Project | \`$(GCP_PROJECT)\` |" >> $(CREDENTIALS_FILE); \
+	echo "| Region | \`$(GCP_REGION)\` |" >> $(CREDENTIALS_FILE); \
+	echo "| Deployed | \`$$DEPLOY_DATE\` |" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "## Database Credentials" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "| Setting | Value |" >> $(CREDENTIALS_FILE); \
+	echo "|---------|-------|" >> $(CREDENTIALS_FILE); \
+	echo "| Instance Name | \`$(DB_INSTANCE_NAME)\` |" >> $(CREDENTIALS_FILE); \
+	echo "| Database Name | \`$(DB_NAME)\` |" >> $(CREDENTIALS_FILE); \
+	echo "| Username | \`$(DB_USER)\` |" >> $(CREDENTIALS_FILE); \
+	echo "| Password | \`$$DB_PASSWORD\` |" >> $(CREDENTIALS_FILE); \
+	echo "| Connection Name | \`$(GCP_PROJECT):$(GCP_REGION):$(DB_INSTANCE_NAME)\` |" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "### Connection String" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "\`\`\`" >> $(CREDENTIALS_FILE); \
+	echo "postgresql://$(DB_USER):$$DB_PASSWORD@/$(DB_NAME)?host=/cloudsql/$(GCP_PROJECT):$(GCP_REGION):$(DB_INSTANCE_NAME)" >> $(CREDENTIALS_FILE); \
+	echo "\`\`\`" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "## Cloud Run Services" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "| Service | URL |" >> $(CREDENTIALS_FILE); \
+	echo "|---------|-----|" >> $(CREDENTIALS_FILE); \
+	echo "| Backend | \`$$BACKEND_URL\` |" >> $(CREDENTIALS_FILE); \
+	echo "| Frontend | \`$$FRONTEND_URL\` |" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "## Load Balancer" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "| Setting | Value |" >> $(CREDENTIALS_FILE); \
+	echo "|---------|-------|" >> $(CREDENTIALS_FILE); \
+	echo "| Static IP | \`$$LB_IP\` |" >> $(CREDENTIALS_FILE); \
+	echo "| HTTP URL | \`http://$$LB_IP\` |" >> $(CREDENTIALS_FILE); \
+	echo "| HTTPS URL | \`https://$$LB_IP\` |" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "## DNS Configuration" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "Point your domain's A record to: \`$$LB_IP\`" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "## Secrets (stored in Secret Manager)" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "- \`database-url\` - Full database connection string" >> $(CREDENTIALS_FILE); \
+	echo "- \`jwt-secret\` - JWT signing key" >> $(CREDENTIALS_FILE); \
+	echo "- \`db-password\` - Database password" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "## IAP Configuration" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "Identity-Aware Proxy is enabled. Grant access with:" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "\`\`\`bash" >> $(CREDENTIALS_FILE); \
+	echo "gcloud iap web add-iam-policy-binding \\\\" >> $(CREDENTIALS_FILE); \
+	echo "  --member='user:EMAIL@example.com' \\\\" >> $(CREDENTIALS_FILE); \
+	echo "  --role='roles/iap.httpsResourceAccessor' \\\\" >> $(CREDENTIALS_FILE); \
+	echo "  --project=$(GCP_PROJECT)" >> $(CREDENTIALS_FILE); \
+	echo "\`\`\`" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "## Useful Commands" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "\`\`\`bash" >> $(CREDENTIALS_FILE); \
+	echo "# View Cloud Run logs" >> $(CREDENTIALS_FILE); \
+	echo "gcloud run services logs read backend --region=$(GCP_REGION) --project=$(GCP_PROJECT)" >> $(CREDENTIALS_FILE); \
+	echo "gcloud run services logs read frontend --region=$(GCP_REGION) --project=$(GCP_PROJECT)" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "# Connect to Cloud SQL" >> $(CREDENTIALS_FILE); \
+	echo "gcloud sql connect $(DB_INSTANCE_NAME) --user=$(DB_USER) --database=$(DB_NAME) --project=$(GCP_PROJECT)" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "# View secrets" >> $(CREDENTIALS_FILE); \
+	echo "gcloud secrets versions access latest --secret=jwt-secret --project=$(GCP_PROJECT)" >> $(CREDENTIALS_FILE); \
+	echo "" >> $(CREDENTIALS_FILE); \
+	echo "# Redeploy services" >> $(CREDENTIALS_FILE); \
+	echo "make -f Makefile.gcp deploy GCP_PROJECT=$(GCP_PROJECT)" >> $(CREDENTIALS_FILE); \
+	echo "\`\`\`" >> $(CREDENTIALS_FILE)
+	@rm -f .db_password.tmp
+	@echo "$(GREEN)Credentials written to $(CREDENTIALS_FILE)$(NC)"
+	@echo "$(RED)IMPORTANT: Add $(CREDENTIALS_FILE) to .gitignore$(NC)"
+
+# -----------------------------------------------------------------------------
+# Deploy Only (for updates)
+# -----------------------------------------------------------------------------
+.PHONY: deploy
+deploy: validate-project build-and-deploy
+	@echo "$(GREEN)Deployment complete$(NC)"
+
+# -----------------------------------------------------------------------------
+# Testing
+# -----------------------------------------------------------------------------
+.PHONY: test-infrastructure
+test-infrastructure: validate-project
+	@echo "$(YELLOW)Testing infrastructure...$(NC)"
+	@echo ""
+
+	@echo "Checking Cloud SQL instance..."
+	@gcloud sql instances describe $(DB_INSTANCE_NAME) --project=$(GCP_PROJECT) --format='table(name,state,region)' || echo "$(RED)Cloud SQL not found$(NC)"
+	@echo ""
+
+	@echo "Checking Cloud Run services..."
+	@gcloud run services list --region=$(GCP_REGION) --project=$(GCP_PROJECT) --format='table(name,status.url)' || echo "$(RED)No Cloud Run services$(NC)"
+	@echo ""
+
+	@echo "Checking Load Balancer..."
+	@gcloud compute forwarding-rules list --global --project=$(GCP_PROJECT) --format='table(name,IPAddress,target)' || echo "$(RED)No forwarding rules$(NC)"
+	@echo ""
+
+	@echo "Checking IAP status..."
+	@gcloud compute backend-services describe backend-frontend --global --project=$(GCP_PROJECT) --format='value(iap.enabled)' 2>/dev/null && echo "IAP enabled on frontend" || echo "IAP not configured"
+	@echo ""
+
+	@echo "$(GREEN)Infrastructure test complete$(NC)"
+
+.PHONY: test-endpoints
+test-endpoints: validate-project
+	@echo "$(YELLOW)Testing endpoints...$(NC)"
+	$(eval BACKEND_URL := $(shell gcloud run services describe backend --region=$(GCP_REGION) --project=$(GCP_PROJECT) --format='value(status.url)' 2>/dev/null))
+	$(eval FRONTEND_URL := $(shell gcloud run services describe frontend --region=$(GCP_REGION) --project=$(GCP_PROJECT) --format='value(status.url)' 2>/dev/null))
+
+	@echo "Testing backend health..."
+	@curl -s -o /dev/null -w "Backend: %{http_code}\n" $(BACKEND_URL)/ || echo "Backend unreachable"
+
+	@echo "Testing frontend..."
+	@curl -s -o /dev/null -w "Frontend: %{http_code}\n" $(FRONTEND_URL)/ || echo "Frontend unreachable"
+
+	@echo "$(GREEN)Endpoint test complete$(NC)"
+
+# -----------------------------------------------------------------------------
+# Teardown
+# -----------------------------------------------------------------------------
+.PHONY: teardown
+teardown: validate-project
+	@echo "$(RED)========================================$(NC)"
+	@echo "$(RED)WARNING: This will delete ALL resources$(NC)"
+	@echo "$(RED)========================================$(NC)"
+	@echo ""
+	@echo "Project: $(GCP_PROJECT)"
+	@echo ""
+	@read -p "Type 'DELETE' to confirm: " confirm && [ "$$confirm" = "DELETE" ] || (echo "Aborted" && exit 1)
+
+	@echo "$(YELLOW)Deleting forwarding rules...$(NC)"
+	-gcloud compute forwarding-rules delete $(APP_NAME)-https-rule --global --project=$(GCP_PROJECT) --quiet 2>/dev/null
+	-gcloud compute forwarding-rules delete $(APP_NAME)-http-rule --global --project=$(GCP_PROJECT) --quiet 2>/dev/null
+
+	@echo "$(YELLOW)Deleting proxies...$(NC)"
+	-gcloud compute target-https-proxies delete $(APP_NAME)-https-proxy --project=$(GCP_PROJECT) --quiet 2>/dev/null
+	-gcloud compute target-http-proxies delete $(APP_NAME)-http-proxy --project=$(GCP_PROJECT) --quiet 2>/dev/null
+
+	@echo "$(YELLOW)Deleting URL maps...$(NC)"
+	-gcloud compute url-maps delete $(APP_NAME)-lb --project=$(GCP_PROJECT) --quiet 2>/dev/null
+	-gcloud compute url-maps delete $(APP_NAME)-http-redirect --project=$(GCP_PROJECT) --quiet 2>/dev/null
+
+	@echo "$(YELLOW)Deleting backend services...$(NC)"
+	-gcloud compute backend-services delete backend-api --global --project=$(GCP_PROJECT) --quiet 2>/dev/null
+	-gcloud compute backend-services delete backend-frontend --global --project=$(GCP_PROJECT) --quiet 2>/dev/null
+
+	@echo "$(YELLOW)Deleting NEGs...$(NC)"
+	-gcloud compute network-endpoint-groups delete backend-neg --region=$(GCP_REGION) --project=$(GCP_PROJECT) --quiet 2>/dev/null
+	-gcloud compute network-endpoint-groups delete frontend-neg --region=$(GCP_REGION) --project=$(GCP_PROJECT) --quiet 2>/dev/null
+
+	@echo "$(YELLOW)Deleting Cloud Run services...$(NC)"
+	-gcloud run services delete backend --region=$(GCP_REGION) --project=$(GCP_PROJECT) --quiet 2>/dev/null
+	-gcloud run services delete frontend --region=$(GCP_REGION) --project=$(GCP_PROJECT) --quiet 2>/dev/null
+
+	@echo "$(YELLOW)Deleting secrets...$(NC)"
+	-gcloud secrets delete database-url --project=$(GCP_PROJECT) --quiet 2>/dev/null
+	-gcloud secrets delete jwt-secret --project=$(GCP_PROJECT) --quiet 2>/dev/null
+	-gcloud secrets delete db-password --project=$(GCP_PROJECT) --quiet 2>/dev/null
+
+	@echo "$(YELLOW)Deleting Cloud SQL instance...$(NC)"
+	-gcloud sql instances delete $(DB_INSTANCE_NAME) --project=$(GCP_PROJECT) --quiet 2>/dev/null
+
+	@echo "$(YELLOW)Deleting VPC connector...$(NC)"
+	-gcloud compute networks vpc-access connectors delete $(VPC_CONNECTOR) --region=$(GCP_REGION) --project=$(GCP_PROJECT) --quiet 2>/dev/null
+
+	@echo "$(YELLOW)Deleting static IP...$(NC)"
+	-gcloud compute addresses delete $(APP_NAME)-lb-ip --global --project=$(GCP_PROJECT) --quiet 2>/dev/null
+
+	@echo "$(YELLOW)Deleting Artifact Registry...$(NC)"
+	-gcloud artifacts repositories delete $(ARTIFACT_REPO) --location=$(GCP_REGION) --project=$(GCP_PROJECT) --quiet 2>/dev/null
+
+	@echo "$(YELLOW)Deleting Cloud Storage bucket...$(NC)"
+	-gsutil rm -r gs://$(GCP_PROJECT)-db-import 2>/dev/null || true
+
+	@echo "$(YELLOW)Deleting VPC network...$(NC)"
+	-gcloud compute networks subnets delete $(APP_NAME)-subnet --region=$(GCP_REGION) --project=$(GCP_PROJECT) --quiet 2>/dev/null
+	-gcloud compute networks delete $(VPC_NAME) --project=$(GCP_PROJECT) --quiet 2>/dev/null
+
+	@rm -rf .gcp-deploy
+	@rm -f $(CREDENTIALS_FILE)
+
+	@echo "$(GREEN)Teardown complete$(NC)"
+
+# -----------------------------------------------------------------------------
+# Help
+# -----------------------------------------------------------------------------
+.PHONY: help
+help:
+	@echo "KanataMusicAcademy - GCP Deployment Makefile"
+	@echo ""
+	@echo "Usage: make -f Makefile.gcp GCP_PROJECT=<project-id> <target>"
+	@echo ""
+	@echo "IMPORTANT: Set GCP_PROJECT to your target project ID."
+	@echo "           You must first switch to this project with:"
+	@echo "           gcloud config set project <project-id>"
+	@echo ""
+	@echo "Targets:"
+	@echo "  setup              Full initial setup (APIs, VPC, DB, secrets, deploy, LB, IAP)"
+	@echo "  deploy             Build and deploy application updates only"
+	@echo "  teardown           Delete ALL resources (requires confirmation)"
+	@echo ""
+	@echo "Individual Steps:"
+	@echo "  enable-apis        Enable required GCP APIs"
+	@echo "  create-vpc         Create VPC network and connector"
+	@echo "  create-database    Create Cloud SQL instance"
+	@echo "  import-database    Import local database snapshot to Cloud SQL"
+	@echo "  create-secrets     Create secrets in Secret Manager"
+	@echo "  build-backend      Build and push backend container"
+	@echo "  build-frontend     Build and push frontend container"
+	@echo "  deploy-backend     Deploy backend to Cloud Run"
+	@echo "  deploy-frontend    Deploy frontend to Cloud Run"
+	@echo "  setup-load-balancer Create load balancer with CDN"
+	@echo "  setup-iap          Enable Identity-Aware Proxy"
+	@echo ""
+	@echo "IAP Management:"
+	@echo "  iap-grant-access   Grant IAP access (requires EMAIL=user@example.com)"
+	@echo ""
+	@echo "Testing:"
+	@echo "  test-infrastructure Check all infrastructure components"
+	@echo "  test-endpoints      Test service endpoints"
+	@echo ""
+	@echo "Options:"
+	@echo "  GCP_PROJECT        Target GCP project ID (required)"
+	@echo "  GCP_REGION         GCP region (default: us-central1)"
+	@echo "  LOCAL_DB_HOST      Local PostgreSQL host (default: localhost)"
+	@echo "  LOCAL_DB_PORT      Local PostgreSQL port (default: 5432)"
+	@echo "  LOCAL_DB_NAME      Local database name (default: kanata_academy)"
+	@echo "  LOCAL_DB_USER      Local database user (default: current user)"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make -f Makefile.gcp help"
+	@echo "  make -f Makefile.gcp GCP_PROJECT=my-kanata-prod setup"
+	@echo "  make -f Makefile.gcp GCP_PROJECT=my-kanata-prod deploy"
+	@echo "  make -f Makefile.gcp GCP_PROJECT=my-kanata-prod iap-grant-access EMAIL=admin@example.com"
+	@echo "  make -f Makefile.gcp GCP_PROJECT=my-kanata-prod teardown"

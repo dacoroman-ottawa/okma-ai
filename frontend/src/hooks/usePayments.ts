@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import type { Transaction, StudentBalance } from "../types/payments"
-import { toCamel, toSnake } from "@/lib/utils"
+import { toCamel, toSnake, getAuthHeaders, API_BASE_URL } from "@/lib/utils"
 
 export function usePayments() {
     const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -11,37 +11,14 @@ export function usePayments() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
-    const getAuthHeaders = async () => {
-        try {
-            // Get Token (using same logic as useClasses/usePeople)
-            const tokenRes = await fetch("http://localhost:8000/token", {
-                method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: new URLSearchParams({
-                    username: "admin@kanatamusic.com",
-                    password: "admin123",
-                }),
-            })
-            if (!tokenRes.ok) throw new Error("Failed to get token")
-            const { access_token } = await tokenRes.json()
-            return {
-                Authorization: `Bearer ${access_token}`,
-                "Content-Type": "application/json"
-            }
-        } catch (err) {
-            console.error("Auth error:", err)
-            throw err
-        }
-    }
-
     const fetchData = useCallback(async () => {
         try {
             setLoading(true)
-            const headers = await getAuthHeaders()
+            const headers = getAuthHeaders()
 
             const [trxRes, balRes] = await Promise.all([
-                fetch("http://localhost:8000/payments/transactions", { headers }),
-                fetch("http://localhost:8000/payments/balances", { headers }),
+                fetch(`${API_BASE_URL}/payments/transactions`, { headers }),
+                fetch(`${API_BASE_URL}/payments/balances`, { headers }),
             ])
 
             if (!trxRes.ok || !balRes.ok) throw new Error("Failed to fetch data")
@@ -66,8 +43,8 @@ export function usePayments() {
 
     const purchaseCredits = async (data: any) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch("http://localhost:8000/payments/credits/purchase", {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/payments/credits/purchase`, {
                 method: "POST",
                 headers,
                 body: JSON.stringify(toSnake(data))
@@ -84,8 +61,8 @@ export function usePayments() {
 
     const adjustCredits = async (data: any) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch("http://localhost:8000/payments/credits/adjustment", {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/payments/credits/adjustment`, {
                 method: "POST",
                 headers,
                 body: JSON.stringify(toSnake(data))
@@ -102,8 +79,8 @@ export function usePayments() {
 
     const processInventoryPayment = async (data: any) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch("http://localhost:8000/payments/inventory", {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/payments/inventory`, {
                 method: "POST",
                 headers,
                 body: JSON.stringify(toSnake(data))
@@ -120,8 +97,8 @@ export function usePayments() {
 
     const updateTransaction = async (id: string, data: any) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch(`http://localhost:8000/payments/transactions/${id}`, {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/payments/transactions/${id}`, {
                 method: "PUT",
                 headers,
                 body: JSON.stringify(toSnake(data))
@@ -138,8 +115,8 @@ export function usePayments() {
 
     const deleteTransaction = async (id: string) => {
         try {
-            const headers = await getAuthHeaders()
-            const res = await fetch(`http://localhost:8000/payments/transactions/${id}`, {
+            const headers = getAuthHeaders()
+            const res = await fetch(`${API_BASE_URL}/payments/transactions/${id}`, {
                 method: "DELETE",
                 headers
             })

@@ -135,7 +135,16 @@ export function EditTransactionForm({
 
   const exportToPDF = () => {
     const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.getWidth()
     const transactionLabel = getTransactionLabel()
+
+    // Colors
+    const primaryColor: [number, number, number] = [79, 70, 229] // Indigo
+    const darkText: [number, number, number] = [30, 41, 59] // Slate-800
+    const mutedText: [number, number, number] = [100, 116, 139] // Slate-500
+    const lightBg: [number, number, number] = [248, 250, 252] // Slate-50
+    const borderColor: [number, number, number] = [226, 232, 240] // Slate-200
+
     const date = transaction
       ? new Date(transaction.date).toLocaleDateString('en-CA', {
           year: 'numeric',
@@ -148,59 +157,171 @@ export function EditTransactionForm({
           day: 'numeric',
         })
 
-    doc.setFontSize(18)
-    doc.text(transactionLabel, 14, 22)
+    // Header background
+    doc.setFillColor(...primaryColor)
+    doc.rect(0, 0, pageWidth, 35, 'F')
+
+    // Header text
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(20)
+    doc.setFont('helvetica', 'bold')
+    doc.text(transactionLabel, 14, 20)
 
     doc.setFontSize(10)
-    doc.setTextColor(100)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Kanata Music Academy', 14, 28)
+
+    // Transaction ID and Date on right
     if (transaction) {
-      doc.text(`Transaction ID: ${transaction.id}`, 14, 30)
+      doc.text(`#${transaction.id}`, pageWidth - 14, 20, { align: 'right' })
     }
-    doc.text(`Date: ${date}`, 14, transaction ? 36 : 30)
+    doc.text(date, pageWidth - 14, 28, { align: 'right' })
 
-    let yPos = transaction ? 48 : 42
-    doc.setTextColor(0)
+    // Customer info card
+    let yPos = 45
+
+    doc.setFillColor(...lightBg)
+    doc.roundedRect(14, yPos, pageWidth - 28, 28, 3, 3, 'F')
+    doc.setDrawColor(...borderColor)
+    doc.setLineWidth(0.3)
+    doc.roundedRect(14, yPos, pageWidth - 28, 28, 3, 3, 'S')
+
+    doc.setTextColor(...mutedText)
+    doc.setFontSize(8)
+    doc.text('STUDENT', 20, yPos + 8)
+
+    doc.setTextColor(...darkText)
     doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.text(student?.name || 'Unknown Student', 20, yPos + 16)
 
-    if (student) {
-      doc.text(`Student: ${student.name}`, 14, yPos)
-      yPos += 8
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(...mutedText)
+    if (enrollment && instrument && teacher) {
+      doc.text(`${instrument.name} with ${teacher.name}`, 20, yPos + 23)
     }
 
-    if (enrollment && instrument && teacher) {
-      doc.text(`Enrollment: ${instrument.name} with ${teacher.name}`, 14, yPos)
+    yPos += 38
+
+    // Details table
+    doc.setTextColor(...darkText)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Details', 14, yPos)
+    yPos += 6
+
+    // Table header
+    doc.setFillColor(...primaryColor)
+    doc.rect(14, yPos, pageWidth - 28, 8, 'F')
+    doc.setTextColor(255, 255, 255)
+    doc.setFontSize(8)
+    doc.text('Description', 18, yPos + 5.5)
+    doc.text('Qty', 120, yPos + 5.5)
+    doc.text('Amount', pageWidth - 18, yPos + 5.5, { align: 'right' })
+    yPos += 8
+
+    // Table rows
+    const drawRow = (desc: string, qty: string, amount: string, isAlt: boolean) => {
+      if (isAlt) {
+        doc.setFillColor(...lightBg)
+        doc.rect(14, yPos, pageWidth - 28, 8, 'F')
+      }
+      doc.setTextColor(...darkText)
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      doc.text(desc, 18, yPos + 5.5)
+      doc.text(qty, 120, yPos + 5.5)
+      doc.text(amount, pageWidth - 18, yPos + 5.5, { align: 'right' })
       yPos += 8
     }
 
     if (isAdjustment || isPurchase) {
-      doc.text(`Credits: ${credits}`, 14, yPos)
-      yPos += 8
+      const rate = calculatedValues.hourlyRate
+      drawRow(
+        `Music Lesson Credits @ ${formatCurrency(rate)}/credit`,
+        credits.toString(),
+        formatCurrency(calculatedValues.subtotal),
+        false
+      )
+    }
+
+    if (discountAmount > 0) {
+      drawRow(
+        discountNote ? `Discount: ${discountNote}` : 'Discount',
+        '',
+        `-${formatCurrency(discountAmount)}`,
+        true
+      )
+    }
+
+    // Totals section
+    yPos += 4
+    doc.setDrawColor(...borderColor)
+    doc.setLineWidth(0.3)
+    doc.line(100, yPos, pageWidth - 14, yPos)
+    yPos += 6
+
+    const drawTotalRow = (label: string, value: string, isBold: boolean = false) => {
+      doc.setFont('helvetica', isBold ? 'bold' : 'normal')
+      doc.setFontSize(isBold ? 10 : 9)
+      doc.setTextColor(...(isBold ? darkText : mutedText))
+      doc.text(label, 120, yPos)
+      doc.setTextColor(...darkText)
+      doc.text(value, pageWidth - 18, yPos, { align: 'right' })
+      yPos += isBold ? 8 : 6
     }
 
     if (isPurchase || isInventoryPayment) {
-      doc.text(`Amount: ${formatCurrency(calculatedValues.subtotal)}`, 14, yPos)
-      yPos += 8
-      doc.text(`Discount: ${formatCurrency(discountAmount)}`, 14, yPos)
-      yPos += 8
-      doc.text(`Total before taxes: ${formatCurrency(calculatedValues.totalBeforeTaxes)}`, 14, yPos)
-      yPos += 8
-      doc.text(`Tax Type: ${taxType === 'None' ? 'No Tax' : taxType}`, 14, yPos)
-      yPos += 8
-      doc.text(`Tax Amount: ${formatCurrency(calculatedValues.taxAmount)}`, 14, yPos)
-      yPos += 8
-      doc.text(`Total: ${formatCurrency(calculatedValues.total)}`, 14, yPos)
-      yPos += 8
-      doc.text(`Payment Method: ${paymentMethod || 'N/A'}`, 14, yPos)
-      yPos += 8
+      drawTotalRow('Subtotal', formatCurrency(calculatedValues.totalBeforeTaxes))
+      if (taxType !== 'None') {
+        drawTotalRow(`${taxType} (${Math.round(calculatedValues.taxRate * 100)}%)`, formatCurrency(calculatedValues.taxAmount))
+      }
+      yPos += 2
+      drawTotalRow('Total', formatCurrency(calculatedValues.total), true)
     }
 
-    if (note) {
-      yPos += 4
-      doc.text('Note:', 14, yPos)
+    // Payment method badge
+    if ((isPurchase || isInventoryPayment) && paymentMethod) {
       yPos += 6
-      const splitNote = doc.splitTextToSize(note, 180)
-      doc.text(splitNote, 14, yPos)
+      doc.setFillColor(236, 253, 245) // Emerald-50
+      doc.roundedRect(120, yPos - 4, pageWidth - 134, 10, 2, 2, 'F')
+      doc.setTextColor(5, 150, 105) // Emerald-600
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'bold')
+      doc.text(`Paid via ${paymentMethod}`, 124, yPos + 2)
+      yPos += 14
     }
+
+    // Note section
+    if (note) {
+      yPos += 8
+      doc.setFillColor(...lightBg)
+      doc.roundedRect(14, yPos, pageWidth - 28, 24, 3, 3, 'F')
+      doc.setDrawColor(...borderColor)
+      doc.roundedRect(14, yPos, pageWidth - 28, 24, 3, 3, 'S')
+
+      doc.setTextColor(...mutedText)
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      doc.text('NOTE', 20, yPos + 8)
+
+      doc.setTextColor(...darkText)
+      doc.setFontSize(9)
+      const splitNote = doc.splitTextToSize(note, pageWidth - 48)
+      doc.text(splitNote.slice(0, 2), 20, yPos + 16)
+    }
+
+    // Footer
+    const footerY = doc.internal.pageSize.getHeight() - 15
+    doc.setDrawColor(...borderColor)
+    doc.line(14, footerY - 5, pageWidth - 14, footerY - 5)
+    doc.setTextColor(...mutedText)
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Kanata Music Academy', 14, footerY)
+    doc.text('Thank you for your business!', pageWidth / 2, footerY, { align: 'center' })
+    doc.text(new Date().toLocaleDateString('en-CA'), pageWidth - 14, footerY, { align: 'right' })
 
     const filename = transaction
       ? `transaction-${transaction.id}.pdf`

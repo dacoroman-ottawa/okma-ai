@@ -4,14 +4,14 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { usePeople } from "@/hooks/usePeople";
 import { StudentDetail, StudentEditModal, AvailabilityEditModal } from "@/components/people";
-import { toCamel } from "@/lib/utils";
+import { toCamel, getAuthToken, API_BASE_URL } from "@/lib/utils";
 import type { Student, AvailabilitySlot } from "@/types/people";
 
 export default function StudentDetailPage() {
     const { id } = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { instruments, enrollments, teachers, updateStudent, updateStudentAvailability } = usePeople();
+    const { instruments, enrollments, teachers, updateStudent, updateStudentAvailability, deleteStudent } = usePeople();
     const [student, setStudent] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -30,19 +30,10 @@ export default function StudentDetailPage() {
         async function fetchDetail() {
             try {
                 setLoading(true);
-                // 1. Get Admin Token
-                const tokenRes = await fetch("http://localhost:8000/token", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                    body: new URLSearchParams({
-                        username: "admin@kanatamusic.com",
-                        password: "admin123"
-                    })
-                });
-                const { access_token } = await tokenRes.json();
-                const headers = { Authorization: `Bearer ${access_token}` };
+                const token = getAuthToken();
+                const headers = { Authorization: `Bearer ${token}` };
 
-                const res = await fetch(`http://localhost:8000/people/students/${id}`, { headers });
+                const res = await fetch(`${API_BASE_URL}/people/students/${id}`, { headers });
                 const data = toCamel(await res.json());
                 setStudent(data);
                 setLoading(false);
@@ -81,6 +72,24 @@ export default function StudentDetailPage() {
         setIsAvailabilityModalOpen(true);
     };
 
+    const handleDeleteStudent = async () => {
+        if (!student) return;
+
+        const confirmed = window.confirm(
+            `Are you sure you want to delete ${student.name}? This action cannot be undone.`
+        );
+
+        if (confirmed) {
+            try {
+                await deleteStudent(student.id);
+                router.push("/people");
+            } catch (error) {
+                console.error("Failed to delete student:", error);
+                alert("Failed to delete student. Please try again.");
+            }
+        }
+    };
+
     return (
         <>
             <StudentDetail
@@ -91,7 +100,7 @@ export default function StudentDetailPage() {
                 teachers={teachers}
                 onBack={() => router.push("/people")}
                 onEdit={() => setIsEditModalOpen(true)}
-                onDelete={() => console.log("Delete Student", id)}
+                onDelete={handleDeleteStudent}
                 onViewTeacher={(teacherId) => router.push(`/people/teachers/${teacherId}`)}
             />
             <StudentEditModal

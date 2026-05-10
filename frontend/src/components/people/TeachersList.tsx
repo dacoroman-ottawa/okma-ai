@@ -31,7 +31,7 @@ export function TeachersList({
       // Instrument filter
       if (
         selectedInstrument &&
-        !teacher.instrumentsTaught.includes(selectedInstrument)
+        !teacher.instrumentsTaught?.includes(selectedInstrument)
       ) {
         return false
       }
@@ -57,36 +57,36 @@ export function TeachersList({
       <div className="shrink-0 bg-slate-50 dark:bg-slate-950">
         <div className="mx-auto max-w-7xl px-4 pt-8 sm:px-6 lg:px-8">
           {/* Header */}
-          <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                Teachers
-              </h1>
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                {activeCount} active, {inactiveCount} inactive
-              </p>
-            </div>
-            <button
-              onClick={onAddTeacher}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md active:scale-[0.98]"
-            >
-              <Plus className="h-4 w-4" />
-              Add Teacher
-            </button>
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+              Teachers
+            </h1>
           </div>
 
           {/* Filters */}
           <div className="mb-6">
-            <FilterBar
-              searchValue={searchValue}
-              onSearchChange={setSearchValue}
-              instruments={instruments}
-              selectedInstrument={selectedInstrument}
-              onInstrumentChange={setSelectedInstrument}
-              activeFilter={activeFilter}
-              onActiveFilterChange={setActiveFilter}
-              placeholder="Search teachers..."
-            />
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <FilterBar
+                searchValue={searchValue}
+                onSearchChange={setSearchValue}
+                instruments={instruments}
+                selectedInstrument={selectedInstrument}
+                onInstrumentChange={setSelectedInstrument}
+                activeFilter={activeFilter}
+                onActiveFilterChange={setActiveFilter}
+                placeholder="Search teachers..."
+                totalCount={teachers.length}
+                activeCount={activeCount}
+                inactiveCount={inactiveCount}
+              />
+              <button
+                onClick={onAddTeacher}
+                className="relative z-20 inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md active:scale-[0.98] shrink-0"
+              >
+                <Plus className="h-4 w-4" />
+                Add Teacher
+              </button>
+            </div>
           </div>
 
           {/* Results count */}

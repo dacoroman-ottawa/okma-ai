@@ -8,6 +8,7 @@ import { AttendanceFilterBar } from './AttendanceFilterBar'
 import { NewClassModal } from './NewClassModal'
 import { AttendanceListInline } from './AttendanceListInline'
 import { AttendanceModal } from '../attendance/AttendanceModal'
+import { useUser } from '@/contexts/UserContext'
 
 interface ClassFormData {
     teacherId: string
@@ -86,7 +87,11 @@ export function ClassesView({
     const [attendanceModalMode, setAttendanceModalMode] = useState<'edit' | 'create'>('edit')
     const [generating, setGenerating] = useState(false)
 
+    const { isAdmin } = useUser()
+
     const handleEditClass = (id: string) => {
+        // Non-admins cannot edit classes
+        if (!isAdmin) return
         const cls = classes.find(c => c.id === id)
         if (cls) {
             setClassToEdit(cls)
@@ -260,13 +265,15 @@ export function ClassesView({
                             {totalCount} classes, {groupCount} group classes
                         </p>
                     </div>
-                    <button
-                        onClick={() => setIsNewClassModalOpen(true)}
-                        className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md active:scale-[0.98]"
-                    >
-                        <Plus className="h-4 w-4" />
-                        New Class
-                    </button>
+                    {isAdmin && (
+                        <button
+                            onClick={() => setIsNewClassModalOpen(true)}
+                            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md active:scale-[0.98]"
+                        >
+                            <Plus className="h-4 w-4" />
+                            New Class
+                        </button>
+                    )}
                 </div>
 
                 {/* Week Navigation for Attendance */}
@@ -291,20 +298,24 @@ export function ClassesView({
                             </button>
                         </div>
                         <div className="flex items-center gap-2">
-                            <button
-                                onClick={handleGenerateWeek}
-                                disabled={generating || attendanceRecords.length > 0}
-                                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
-                                title={attendanceRecords.length > 0 ? 'Week already has attendance entries' : ''}
-                            >
-                                {generating ? 'Generating...' : 'Generate Week'}
-                            </button>
-                            <button
-                                onClick={handleAddAttendanceEntry}
-                                className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-                            >
-                                <Plus className="h-4 w-4" />
-                            </button>
+                            {isAdmin && (
+                                <>
+                                    <button
+                                        onClick={handleGenerateWeek}
+                                        disabled={generating || attendanceRecords.length > 0}
+                                        className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                                        title={attendanceRecords.length > 0 ? 'Week already has attendance entries' : ''}
+                                    >
+                                        {generating ? 'Generating...' : 'Generate Week'}
+                                    </button>
+                                    <button
+                                        onClick={handleAddAttendanceEntry}
+                                        className="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                    </button>
+                                </>
+                            )}
                             <button
                                 onClick={onNextWeek}
                                 className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
@@ -349,6 +360,7 @@ export function ClassesView({
                         onEditClass={handleEditClass}
                         onRescheduleClass={onRescheduleClass}
                         onCancelClass={onCancelClass}
+                        readOnly={!isAdmin}
                     />
                 )}
                 {viewMode === 'attendance-list' && (
@@ -361,6 +373,7 @@ export function ClassesView({
                         onStatusChange={handleAttendanceStatusChange}
                         onRowClick={handleAttendanceRowClick}
                         onDelete={onDeleteAttendance}
+                        readOnly={!isAdmin}
                     />
                 )}
             </div>

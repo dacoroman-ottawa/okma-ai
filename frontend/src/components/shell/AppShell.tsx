@@ -97,7 +97,7 @@ export function AppShell({
         </header>
 
         {/* Page content */}
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <main className="flex min-h-0 flex-1 flex-col overflow-auto bg-slate-50 dark:bg-slate-950">
           {children}
         </main>
       </div>

@@ -11,6 +11,7 @@ interface ClassesListProps {
     onEditClass?: (id: string) => void
     onRescheduleClass?: (id: string) => void
     onCancelClass?: (id: string) => void
+    readOnly?: boolean
 }
 
 export function ClassesList({
@@ -22,6 +23,7 @@ export function ClassesList({
     onEditClass,
     onRescheduleClass,
     onCancelClass,
+    readOnly = false,
 }: ClassesListProps) {
     const [openMenu, setOpenMenu] = useState<string | null>(null)
 
@@ -131,55 +133,57 @@ export function ClassesList({
                                 </span>
                             </div>
 
-                            {/* Actions */}
+                            {/* Actions - hidden in read-only mode */}
                             <div className="col-span-1 flex justify-end">
-                                <div className="relative">
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation()
-                                            setOpenMenu(openMenu === classItem.id ? null : classItem.id)
-                                        }}
-                                        className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300"
-                                    >
-                                        <MoreVertical className="h-4 w-4" />
-                                    </button>
+                                {!readOnly && (
+                                    <div className="relative">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation()
+                                                setOpenMenu(openMenu === classItem.id ? null : classItem.id)
+                                            }}
+                                            className="rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+                                        >
+                                            <MoreVertical className="h-4 w-4" />
+                                        </button>
 
-                                    {openMenu === classItem.id && (
-                                        <>
-                                            <div
-                                                className="fixed inset-0 z-10"
-                                                onClick={(e) => {
-                                                    e.stopPropagation()
-                                                    setOpenMenu(null)
-                                                }}
-                                            />
-                                            <div className="absolute right-0 z-20 mt-1 w-40 rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
-                                                <button
+                                        {openMenu === classItem.id && (
+                                            <>
+                                                <div
+                                                    className="fixed inset-0 z-10"
                                                     onClick={(e) => {
                                                         e.stopPropagation()
-                                                        onEditClass?.(classItem.id)
                                                         setOpenMenu(null)
                                                     }}
-                                                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
-                                                >
-                                                    <Edit className="h-4 w-4" />
-                                                    Edit
-                                                </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation()
-                                                        onRescheduleClass?.(classItem.id)
-                                                        setOpenMenu(null)
-                                                    }}
-                                                    className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
-                                                >
-                                                    <Calendar className="h-4 w-4" />
-                                                    Reschedule
-                                                </button>
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
+                                                />
+                                                <div className="absolute right-0 z-20 mt-1 w-40 rounded-lg border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-900">
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            onEditClass?.(classItem.id)
+                                                            setOpenMenu(null)
+                                                        }}
+                                                        className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            onRescheduleClass?.(classItem.id)
+                                                            setOpenMenu(null)
+                                                        }}
+                                                        className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800"
+                                                    >
+                                                        <Calendar className="h-4 w-4" />
+                                                        Reschedule
+                                                    </button>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )

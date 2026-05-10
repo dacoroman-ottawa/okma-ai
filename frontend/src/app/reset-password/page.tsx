@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { KeyRound, CheckCircle, AlertCircle } from "lucide-react";
+import { API_BASE_URL } from "@/lib/utils";
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
 
@@ -40,7 +41,7 @@ export default function ResetPasswordPage() {
         setLoading(true);
 
         try {
-            const res = await fetch("http://localhost:8000/auth/reset-password", {
+            const res = await fetch(`${API_BASE_URL}/auth/reset-password`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -153,5 +154,17 @@ export default function ResetPasswordPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function ResetPasswordPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+                <div className="text-slate-500">Loading...</div>
+            </div>
+        }>
+            <ResetPasswordContent />
+        </Suspense>
     );
 }
