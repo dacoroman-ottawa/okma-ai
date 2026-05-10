@@ -11,7 +11,7 @@ export default function StudentDetailPage() {
     const { id } = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { instruments, enrollments, teachers, updateStudent, updateStudentAvailability } = usePeople();
+    const { instruments, enrollments, teachers, updateStudent, updateStudentAvailability, deleteStudent } = usePeople();
     const [student, setStudent] = useState<Student | null>(null);
     const [loading, setLoading] = useState(true);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -72,6 +72,24 @@ export default function StudentDetailPage() {
         setIsAvailabilityModalOpen(true);
     };
 
+    const handleDeleteStudent = async () => {
+        if (!student) return;
+
+        const confirmed = window.confirm(
+            `Are you sure you want to delete ${student.name}? This action cannot be undone.`
+        );
+
+        if (confirmed) {
+            try {
+                await deleteStudent(student.id);
+                router.push("/people");
+            } catch (error) {
+                console.error("Failed to delete student:", error);
+                alert("Failed to delete student. Please try again.");
+            }
+        }
+    };
+
     return (
         <>
             <StudentDetail
@@ -82,7 +100,7 @@ export default function StudentDetailPage() {
                 teachers={teachers}
                 onBack={() => router.push("/people")}
                 onEdit={() => setIsEditModalOpen(true)}
-                onDelete={() => console.log("Delete Student", id)}
+                onDelete={handleDeleteStudent}
                 onViewTeacher={(teacherId) => router.push(`/people/teachers/${teacherId}`)}
             />
             <StudentEditModal

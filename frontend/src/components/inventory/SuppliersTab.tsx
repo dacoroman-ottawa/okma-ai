@@ -10,6 +10,8 @@ import {
   Pencil,
   Trash2,
   Power,
+  Search,
+  X,
 } from 'lucide-react'
 import type { Supplier, Product } from '@/types/inventory'
 
@@ -33,47 +35,116 @@ export function SuppliersTab({
   onAddSupplier,
 }: SuppliersTabProps) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [searchValue, setSearchValue] = useState('')
+  const [activeFilter, setActiveFilter] = useState<'all' | 'active' | 'inactive'>('all')
 
   const getProductCount = (supplierId: string) =>
     products.filter((p) => p.supplierId === supplierId && p.active).length
 
+  const activeCount = suppliers.filter((s) => s.active).length
+  const inactiveCount = suppliers.filter((s) => !s.active).length
+
+  const filteredSuppliers = useMemo(() => {
+    return suppliers.filter((supplier) => {
+      // Search filter
+      if (
+        searchValue &&
+        !supplier.name.toLowerCase().includes(searchValue.toLowerCase()) &&
+        !supplier.contactPerson?.toLowerCase().includes(searchValue.toLowerCase())
+      ) {
+        return false
+      }
+
+      // Active filter
+      if (activeFilter === 'active' && !supplier.active) {
+        return false
+      }
+      if (activeFilter === 'inactive' && supplier.active) {
+        return false
+      }
+
+      return true
+    })
+  }, [suppliers, searchValue, activeFilter])
+
   const sortedSuppliers = useMemo(() => {
-    return [...suppliers].sort((a, b) => {
+    return [...filteredSuppliers].sort((a, b) => {
       // Active first, then by name
       if (a.active !== b.active) return a.active ? -1 : 1
       return a.name.localeCompare(b.name)
     })
-  }, [suppliers])
+  }, [filteredSuppliers])
 
-  const activeCount = suppliers.filter((s) => s.active).length
+  const hasActiveFilters = searchValue || activeFilter !== 'all'
 
   return (
     <div className="flex h-full flex-col">
       {/* Fixed header */}
       <div className="shrink-0 pb-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-6">
-            <div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                Active Suppliers
-              </p>
-              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-                {activeCount}
-              </p>
+          {/* Filters */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center flex-1">
+            {/* Search input */}
+            <div className="relative flex-1 sm:max-w-sm">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={searchValue}
+                onChange={(e) => setSearchValue(e.target.value)}
+                placeholder="Search suppliers..."
+                className="h-10 w-full rounded-lg border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:border-indigo-500 dark:focus:ring-indigo-900"
+              />
             </div>
-            {suppliers.length > activeCount && (
-              <>
-                <div className="h-8 w-px bg-slate-200 dark:bg-slate-700" />
-                <div>
-                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                    Inactive
-                  </p>
-                  <p className="text-2xl font-bold text-slate-400 dark:text-slate-500">
-                    {suppliers.length - activeCount}
-                  </p>
-                </div>
-              </>
-            )}
+
+            {/* Active/Inactive toggle */}
+            <div className="flex items-center gap-2">
+              <div className="flex h-10 items-center rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
+                <button
+                  onClick={() => setActiveFilter('all')}
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                    activeFilter === 'all'
+                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  onClick={() => setActiveFilter('active')}
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                    activeFilter === 'active'
+                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
+                  }`}
+                >
+                  Active ({activeCount})
+                </button>
+                <button
+                  onClick={() => setActiveFilter('inactive')}
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                    activeFilter === 'inactive'
+                      ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                      : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
+                  }`}
+                >
+                  Inactive ({inactiveCount})
+                </button>
+              </div>
+
+              {/* Clear filters */}
+              {hasActiveFilters && (
+                <button
+                  onClick={() => {
+                    setSearchValue('')
+                    setActiveFilter('all')
+                  }}
+                  className="flex h-10 items-center gap-1 rounded-lg px-3 text-sm text-slate-500 transition-colors hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                >
+                  <X className="h-4 w-4" />
+                  Clear
+                </button>
+              )}
+            </div>
           </div>
 
           <button
@@ -84,6 +155,13 @@ export function SuppliersTab({
             Add Supplier
           </button>
         </div>
+
+        {/* Results count when filters are active */}
+        {hasActiveFilters && (
+          <p className="mt-4 text-sm text-slate-500 dark:text-slate-400">
+            Showing {filteredSuppliers.length} of {suppliers.length} suppliers
+          </p>
+        )}
       </div>
 
       {/* Scrollable suppliers grid */}
@@ -92,10 +170,12 @@ export function SuppliersTab({
         <div className="rounded-xl border border-slate-200 bg-white p-12 text-center dark:border-slate-700 dark:bg-slate-900">
           <Truck className="mx-auto h-12 w-12 text-slate-300 dark:text-slate-600" />
           <h3 className="mt-4 text-lg font-medium text-slate-900 dark:text-slate-100">
-            No suppliers yet
+            {hasActiveFilters ? 'No suppliers found' : 'No suppliers yet'}
           </h3>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-            Add your first supplier to track where products come from.
+            {hasActiveFilters
+              ? 'Try adjusting your filters'
+              : 'Add your first supplier to track where products come from.'}
           </p>
         </div>
       ) : (

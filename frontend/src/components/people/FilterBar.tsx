@@ -11,6 +11,9 @@ interface FilterBarProps {
   activeFilter: 'all' | 'active' | 'inactive'
   onActiveFilterChange: (filter: 'all' | 'active' | 'inactive') => void
   placeholder?: string
+  totalCount?: number
+  activeCount?: number
+  inactiveCount?: number
 }
 
 export function FilterBar({
@@ -22,6 +25,9 @@ export function FilterBar({
   activeFilter,
   onActiveFilterChange,
   placeholder = 'Search by name...',
+  totalCount,
+  activeCount,
+  inactiveCount,
 }: FilterBarProps) {
   const [instrumentOpen, setInstrumentOpen] = useState(false)
 
@@ -29,12 +35,12 @@ export function FilterBar({
     ? instruments.find((i) => i.id === selectedInstrument)?.name
     : null
 
-  const hasActiveFilters = selectedInstrument || activeFilter !== 'all'
+  const hasActiveFilters = searchValue || selectedInstrument || activeFilter !== 'all'
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
       {/* Search input */}
-      <div className="relative flex-1 sm:max-w-sm">
+      <div className="relative sm:w-64">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
           type="text"
@@ -104,25 +110,43 @@ export function FilterBar({
 
         {/* Active/Inactive toggle */}
         <div className="flex h-10 items-center rounded-lg border border-slate-200 bg-white p-1 dark:border-slate-700 dark:bg-slate-900">
-          {(['all', 'active', 'inactive'] as const).map((filter) => (
-            <button
-              key={filter}
-              onClick={() => onActiveFilterChange(filter)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                activeFilter === filter
-                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
-              }`}
-            >
-              {filter.charAt(0).toUpperCase() + filter.slice(1)}
-            </button>
-          ))}
+          <button
+            onClick={() => onActiveFilterChange('all')}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              activeFilter === 'all'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
+            }`}
+          >
+            All{totalCount !== undefined ? ` (${totalCount})` : ''}
+          </button>
+          <button
+            onClick={() => onActiveFilterChange('active')}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              activeFilter === 'active'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
+            }`}
+          >
+            Active{activeCount !== undefined ? ` (${activeCount})` : ''}
+          </button>
+          <button
+            onClick={() => onActiveFilterChange('inactive')}
+            className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              activeFilter === 'inactive'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100'
+            }`}
+          >
+            Inactive{inactiveCount !== undefined ? ` (${inactiveCount})` : ''}
+          </button>
         </div>
 
         {/* Clear filters */}
         {hasActiveFilters && (
           <button
             onClick={() => {
+              onSearchChange('')
               onInstrumentChange(null)
               onActiveFilterChange('all')
             }}

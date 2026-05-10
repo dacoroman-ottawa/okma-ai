@@ -190,13 +190,15 @@ async def get_students(
     return [s.__dict__ for s in query.all()]
 
 # Create / Update / Delete would follow similar logic...
-# I'll implement a basic Teacher creation to show the welcome email trigger
 @router.post("/teachers")
 async def create_teacher(
-    teacher_data: dict, 
+    teacher_data: dict,
     db: Any = Depends(get_db),
     admin: Any = Depends(RoleChecker([UserRoleEnum.ADMIN]))
 ):
+    from ..models import QualificationEnum
+    from datetime import date
+
     # 1. Create AppUser
     user_id = str(uuid.uuid4())
     new_user = AppUser(
@@ -204,11 +206,33 @@ async def create_teacher(
         name=teacher_data["name"],
         email=teacher_data["email"],
         role=UserRoleEnum.TEACHER,
-        hashed_password="TEMP_PASSWORD", # In reality, generate a random one and send reset link
+        hashed_password="TEMP_PASSWORD",  # In reality, generate a random one and send reset link
         is_active=True
     )
     db.add(new_user)
-    
+
+    # Handle qualification enum conversion
+    qual_value = teacher_data.get("qualification")
+    qualification = None
+    if qual_value:
+        qual_map = {
+            "Bachelor of Music": QualificationEnum.BACHELOR,
+            "Master": QualificationEnum.MASTER,
+            "Doctorate": QualificationEnum.DOCTORATE,
+            "Professional Certificate": QualificationEnum.CERTIFICATE,
+            "Self-Taught Professional": QualificationEnum.SELF_TAUGHT,
+        }
+        qualification = qual_map.get(qual_value)
+
+    # Handle dates
+    date_of_birth = None
+    if teacher_data.get("dateOfBirth"):
+        date_of_birth = date.fromisoformat(teacher_data["dateOfBirth"])
+
+    date_of_enrollment = None
+    if teacher_data.get("dateOfEnrollment"):
+        date_of_enrollment = date.fromisoformat(teacher_data["dateOfEnrollment"])
+
     # 2. Create Teacher profile
     teacher_id = "tch-" + str(uuid.uuid4())[:8]
     new_teacher = Teacher(
@@ -216,17 +240,51 @@ async def create_teacher(
         user_id=user_id,
         name=teacher_data["name"],
         email=teacher_data["email"],
+        primary_contact=teacher_data.get("primaryContact"),
+        address=teacher_data.get("address"),
+        biography=teacher_data.get("biography"),
         specialization=teacher_data.get("specialization"),
-        hourly_rate=teacher_data.get("hourly_rate", 0),
-        qualification=teacher_data.get("qualification")
+        qualification=qualification,
+        hourly_rate=teacher_data.get("hourlyRate", 0),
+        active=teacher_data.get("active", True),
+        date_of_birth=date_of_birth,
+        date_of_enrollment=date_of_enrollment,
+        social_insurance_number=teacher_data.get("socialInsuranceNumber"),
     )
     db.add(new_teacher)
-    db.commit()
-    
-    # 3. Trigger Welcome Email
-    await send_welcome_email(new_user.email, new_user.name, "Teacher")
 
-    return new_teacher
+    # Handle instruments
+    instrument_ids = teacher_data.get("instrumentsTaught", [])
+    if instrument_ids:
+        instruments = db.query(Instrument).filter(Instrument.id.in_(instrument_ids)).all()
+        new_teacher.instruments = instruments
+
+    db.commit()
+    db.refresh(new_teacher)
+
+    # 3. Trigger Welcome Email (non-blocking)
+    try:
+        await send_welcome_email(new_user.email, new_user.name, "Teacher")
+    except Exception as e:
+        print(f"Failed to send welcome email: {e}")
+
+    return {
+        "id": new_teacher.id,
+        "name": new_teacher.name,
+        "email": new_teacher.email,
+        "primaryContact": new_teacher.primary_contact,
+        "address": new_teacher.address,
+        "biography": new_teacher.biography,
+        "specialization": new_teacher.specialization,
+        "qualification": new_teacher.qualification.value if new_teacher.qualification else None,
+        "hourlyRate": new_teacher.hourly_rate,
+        "active": new_teacher.active,
+        "dateOfBirth": new_teacher.date_of_birth.isoformat() if new_teacher.date_of_birth else None,
+        "dateOfEnrollment": new_teacher.date_of_enrollment.isoformat() if new_teacher.date_of_enrollment else None,
+        "socialInsuranceNumber": new_teacher.social_insurance_number,
+        "instrumentsTaught": [i.id for i in new_teacher.instruments],
+        "availability": []
+    }
 
 @router.put("/teachers/{teacher_id}")
 async def update_teacher(
@@ -318,6 +376,89 @@ async def update_teacher(
         "hourlyRate": teacher.hourly_rate,
         "instrumentsTaught": [i.id for i in teacher.instruments],
     }
+
+@router.post("/students")
+async def create_student(
+    student_data: dict,
+    db: Any = Depends(get_db),
+    admin: Any = Depends(RoleChecker([UserRoleEnum.ADMIN]))
+):
+    from ..models import SkillLevelEnum
+    from datetime import date
+
+    # 1. Create AppUser
+    user_id = str(uuid.uuid4())
+    new_user = AppUser(
+        id=user_id,
+        name=student_data["name"],
+        email=student_data["email"],
+        role=UserRoleEnum.STUDENT,
+        hashed_password="TEMP_PASSWORD",  # In reality, generate a random one and send reset link
+        is_active=True
+    )
+    db.add(new_user)
+
+    # Handle date of birth
+    date_of_birth = None
+    if student_data.get("dateOfBirth"):
+        date_of_birth = date.fromisoformat(student_data["dateOfBirth"])
+
+    # 2. Create Student profile
+    student_id = "stu-" + str(uuid.uuid4())[:8]
+    new_student = Student(
+        id=student_id,
+        user_id=user_id,
+        name=student_data["name"],
+        email=student_data["email"],
+        primary_contact=student_data.get("primaryContact"),
+        address=student_data.get("address"),
+        date_of_birth=date_of_birth,
+        active=student_data.get("active", True),
+    )
+    db.add(new_student)
+    db.flush()  # Get the student ID before adding skill levels
+
+    # Handle skill levels
+    skill_levels_data = student_data.get("skillLevels", [])
+    for skill_data in skill_levels_data:
+        level_map = {
+            "Beginner": SkillLevelEnum.BEGINNER,
+            "Intermediate": SkillLevelEnum.INTERMEDIATE,
+            "Advanced": SkillLevelEnum.ADVANCED,
+        }
+        new_skill = SkillLevel(
+            student_id=new_student.id,
+            instrument_id=skill_data["instrumentId"],
+            level=level_map.get(skill_data["level"], SkillLevelEnum.BEGINNER)
+        )
+        db.add(new_skill)
+
+    db.commit()
+    db.refresh(new_student)
+
+    # 3. Trigger Welcome Email (non-blocking)
+    try:
+        await send_welcome_email(new_user.email, new_user.name, "Student")
+    except Exception as e:
+        print(f"Failed to send welcome email: {e}")
+
+    return {
+        "id": new_student.id,
+        "name": new_student.name,
+        "email": new_student.email,
+        "primaryContact": new_student.primary_contact,
+        "address": new_student.address,
+        "dateOfBirth": new_student.date_of_birth.isoformat() if new_student.date_of_birth else None,
+        "active": new_student.active,
+        "skillLevels": [
+            {
+                "instrumentId": sl.instrument_id,
+                "level": sl.level.value if sl.level else None
+            } for sl in new_student.skill_levels
+        ],
+        "availability": []
+    }
+
 
 @router.get("/students/{student_id}")
 async def get_student(
@@ -531,3 +672,72 @@ async def update_student_availability(
             } for slot in student.availability
         ]
     }
+
+
+@router.delete("/teachers/{teacher_id}")
+async def delete_teacher(
+    teacher_id: str,
+    db: Any = Depends(get_db),
+    admin: Any = Depends(RoleChecker([UserRoleEnum.ADMIN]))
+):
+    teacher = db.query(Teacher).filter(Teacher.id == teacher_id).first()
+    if not teacher:
+        raise HTTPException(status_code=404, detail="Teacher not found")
+
+    # Store user_id before deleting teacher
+    user_id = teacher.user_id
+
+    # Delete availability slots
+    for slot in teacher.availability:
+        db.delete(slot)
+
+    # Clear instrument associations
+    teacher.instruments = []
+
+    # Delete the teacher
+    db.delete(teacher)
+
+    # Delete the associated AppUser
+    if user_id:
+        user = db.query(AppUser).filter(AppUser.id == user_id).first()
+        if user:
+            db.delete(user)
+
+    db.commit()
+
+    return {"message": "Teacher deleted successfully", "id": teacher_id}
+
+
+@router.delete("/students/{student_id}")
+async def delete_student(
+    student_id: str,
+    db: Any = Depends(get_db),
+    admin: Any = Depends(RoleChecker([UserRoleEnum.ADMIN]))
+):
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Student not found")
+
+    # Store user_id before deleting student
+    user_id = student.user_id
+
+    # Delete availability slots
+    for slot in student.availability:
+        db.delete(slot)
+
+    # Delete skill levels
+    for sl in student.skill_levels:
+        db.delete(sl)
+
+    # Delete the student
+    db.delete(student)
+
+    # Delete the associated AppUser
+    if user_id:
+        user = db.query(AppUser).filter(AppUser.id == user_id).first()
+        if user:
+            db.delete(user)
+
+    db.commit()
+
+    return {"message": "Student deleted successfully", "id": student_id}

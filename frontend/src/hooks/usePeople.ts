@@ -168,6 +168,98 @@ export function usePeople() {
         return result.availability;
     };
 
+    const addTeacher = async (data: Partial<Teacher>) => {
+        const token = getAuthToken();
+        const res = await fetch(`${API_BASE_URL}/people/teachers`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.detail || "Failed to create teacher");
+        }
+
+        const newTeacher = toCamel(await res.json());
+        setTeachers((prev) => [...prev, newTeacher]);
+        return newTeacher;
+    };
+
+    const addStudent = async (data: Partial<Student>) => {
+        const token = getAuthToken();
+        const res = await fetch(`${API_BASE_URL}/people/students`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(data)
+        });
+
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.detail || "Failed to create student");
+        }
+
+        const newStudent = toCamel(await res.json());
+        setStudents((prev) => [...prev, newStudent]);
+        return newStudent;
+    };
+
+    const deleteTeacher = async (id: string) => {
+        const token = getAuthToken();
+        const res = await fetch(`${API_BASE_URL}/people/teachers/${id}`, {
+            method: "DELETE",
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.detail || "Failed to delete teacher");
+        }
+
+        // Remove from local state
+        setTeachers((prev) => prev.filter((t) => t.id !== id));
+
+        // Remove availability
+        setTeacherAvailability((prev) => {
+            const newAvail = { ...prev };
+            delete newAvail[id];
+            return newAvail;
+        });
+    };
+
+    const deleteStudent = async (id: string) => {
+        const token = getAuthToken();
+        const res = await fetch(`${API_BASE_URL}/people/students/${id}`, {
+            method: "DELETE",
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.detail || "Failed to delete student");
+        }
+
+        // Remove from local state
+        setStudents((prev) => prev.filter((s) => s.id !== id));
+
+        // Remove availability
+        setStudentAvailability((prev) => {
+            const newAvail = { ...prev };
+            delete newAvail[id];
+            return newAvail;
+        });
+    };
+
     return {
         teachers,
         students,
@@ -176,13 +268,13 @@ export function usePeople() {
         teacherAvailability,
         studentAvailability,
         loading,
-        addTeacher: async (data: any) => console.log("Add Teacher", data),
+        addTeacher,
         updateTeacher,
         updateTeacherAvailability,
-        deleteTeacher: async (id: string) => console.log("Delete Teacher", id),
-        addStudent: async (data: any) => console.log("Add Student", data),
+        deleteTeacher,
+        addStudent,
         updateStudent,
         updateStudentAvailability,
-        deleteStudent: async (id: string) => console.log("Delete Student", id),
+        deleteStudent,
     };
 }

@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { usePeople } from "@/hooks/usePeople";
-import { TeachersList, StudentsList } from "@/components/people";
+import { TeachersList, StudentsList, TeacherAddModal, StudentAddModal } from "@/components/people";
 import { useRouter } from "next/navigation";
 
 export default function PeoplePage() {
     const [activeTab, setActiveTab] = useState<"teachers" | "students">("teachers");
+    const [isAddTeacherModalOpen, setIsAddTeacherModalOpen] = useState(false);
+    const [isAddStudentModalOpen, setIsAddStudentModalOpen] = useState(false);
 
     // Restore last active tab from sessionStorage on mount
     useEffect(() => {
@@ -21,7 +23,7 @@ export default function PeoplePage() {
         setActiveTab(tab);
         sessionStorage.setItem("peopleActiveTab", tab);
     };
-    const { teachers, students, instruments, teacherAvailability, studentAvailability, enrollments } = usePeople();
+    const { teachers, students, instruments, teacherAvailability, studentAvailability, enrollments, addTeacher, addStudent } = usePeople();
     const router = useRouter();
 
     return (
@@ -60,7 +62,7 @@ export default function PeoplePage() {
                         enrollments={enrollments}
                         students={students}
                         onViewTeacher={(id) => router.push(`/people/teachers/${id}`)}
-                        onAddTeacher={() => console.log("Add Teacher Modal")}
+                        onAddTeacher={() => setIsAddTeacherModalOpen(true)}
                         onEditTeacher={(id) => router.push(`/people/teachers/${id}?edit=true`)}
                     />
                 ) : (
@@ -71,11 +73,27 @@ export default function PeoplePage() {
                         enrollments={enrollments}
                         teachers={teachers}
                         onViewStudent={(id) => router.push(`/people/students/${id}`)}
-                        onAddStudent={() => console.log("Add Student Modal")}
+                        onAddStudent={() => setIsAddStudentModalOpen(true)}
                         onEditStudent={(id) => router.push(`/people/students/${id}?edit=true`)}
                     />
                 )}
             </div>
+
+            {/* Add Teacher Modal */}
+            <TeacherAddModal
+                instruments={instruments}
+                isOpen={isAddTeacherModalOpen}
+                onClose={() => setIsAddTeacherModalOpen(false)}
+                onSave={addTeacher}
+            />
+
+            {/* Add Student Modal */}
+            <StudentAddModal
+                instruments={instruments}
+                isOpen={isAddStudentModalOpen}
+                onClose={() => setIsAddStudentModalOpen(false)}
+                onSave={addStudent}
+            />
         </div>
     );
 }
