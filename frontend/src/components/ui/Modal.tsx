@@ -37,8 +37,8 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
                 onClick={onClose}
             />
 
-            <div className="relative w-full max-w-lg transform overflow-hidden rounded-xl bg-white p-6 shadow-xl transition-all dark:bg-slate-900 sm:w-full">
-                <div className="mb-5 flex items-center justify-between">
+            <div className="relative flex max-h-[90vh] w-full max-w-lg transform flex-col rounded-xl bg-white shadow-xl transition-all dark:bg-slate-900 sm:w-full">
+                <div className="flex shrink-0 items-center justify-between border-b border-slate-200 px-6 py-4 dark:border-slate-700">
                     <h3 className="text-lg font-semibold leading-6 text-slate-900 dark:text-slate-100">
                         {title}
                     </h3>
@@ -50,7 +50,9 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
                     </button>
                 </div>
 
-                {children}
+                <div className="overflow-y-auto p-6">
+                    {children}
+                </div>
             </div>
         </div>
     )
