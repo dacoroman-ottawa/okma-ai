@@ -104,7 +104,13 @@ docker compose -f docker-compose.prod.yml up -d
 
 ## Data Persistence
 
-PostgreSQL data is stored in `./pgdata` directory. This survives container restarts and updates.
+PostgreSQL data is stored in a named Docker volume `okma-pgdata`. This survives container restarts and updates.
+
+**View volume:**
+
+```bash
+docker volume inspect okma-ai_okma-pgdata
+```
 
 **Backup database:**
 
@@ -147,6 +153,5 @@ docker compose -f docker-compose.prod.yml ps db
 
 ```bash
 docker compose -f docker-compose.prod.yml down -v
-rm -rf pgdata
 docker compose -f docker-compose.prod.yml up -d
 ```
