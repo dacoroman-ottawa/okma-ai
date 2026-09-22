@@ -1,7 +1,8 @@
 # =============================================================================
-# KanataMusicAcademy - Docker Compose
+# KanataMusicAcademy - Production Docker Compose
 # =============================================================================
-# Orchestrates PostgreSQL, FastAPI backend, and Next.js frontend
+# Uses pre-built images from Docker Hub instead of building locally
+# Usage: docker-compose -f docker-compose.prod.yml up -d
 # =============================================================================
 
 services:
@@ -33,9 +34,7 @@ services:
   # FastAPI Backend
   # ---------------------------------------------------------------------------
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: dacoroman/okma-backend:latest
     container_name: okma-backend
     restart: unless-stopped
     ports:
@@ -60,12 +59,7 @@ services:
   # Next.js Frontend
   # ---------------------------------------------------------------------------
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        # Backend URL for Next.js rewrites (baked in at build time)
-        INTERNAL_API_URL: http://backend:8000
+    image: dacoroman/okma-frontend:latest
     container_name: okma-frontend
     restart: unless-stopped
     ports:

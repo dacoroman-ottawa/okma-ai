@@ -106,18 +106,14 @@ This document describes the Docker container orchestration for KanataMusicAcadem
 
 ```yaml
 volumes:
-  pgdata:
+  okma-pgdata:
     driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ./pgdata
 ```
 
 Data persistence:
-- PostgreSQL data stored in `./pgdata` directory
+- PostgreSQL data stored in named Docker volume `okma-pgdata`
 - Survives container restarts and rebuilds
-- Easy to backup and migrate
+- Managed by Docker for better isolation and portability
 
 ## Startup Order & Health Checks
 
