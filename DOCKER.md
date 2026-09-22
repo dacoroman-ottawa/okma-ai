@@ -68,10 +68,10 @@ This document describes the Docker container orchestration for KanataMusicAcadem
 | Depends On | `backend` (healthy) |
 
 **Environment Variables:**
-- `NEXT_PUBLIC_API_URL=http://backend:8000`
+- `INTERNAL_API_URL=http://backend:8000` (server-side proxy URL)
 - `PORT=3000`
 
-**Purpose:** Next.js application serving the web UI. Proxies API requests to backend via Docker network.
+**Purpose:** Next.js application serving the web UI. Uses relative URLs in browser; Next.js rewrites proxy all API requests to backend via Docker network.
 
 ## Files to Create/Modify
 
@@ -170,5 +170,5 @@ DATABASE_URL=postgresql://postgres:change_me_in_production@db:5432/kanata_academ
 SECRET_KEY=generate_a_secure_random_key_here
 
 # Frontend
-NEXT_PUBLIC_API_URL=http://backend:8000
+INTERNAL_API_URL=http://backend:8000
 ```
