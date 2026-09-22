@@ -45,6 +45,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const logout = () => {
         localStorage.removeItem('accessToken')
         localStorage.removeItem('user')
+        // Clear auth cookie
+        document.cookie = 'auth=; path=/; max-age=0'
         setUser(null)
     }
 

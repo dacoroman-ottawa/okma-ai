@@ -45,6 +45,9 @@ export default function LoginPage() {
             localStorage.setItem("accessToken", data.accessToken);
             localStorage.setItem("user", JSON.stringify(data.user));
 
+            // Set auth cookie for middleware (expires in 7 days)
+            document.cookie = `auth=${data.accessToken}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
+
             // Redirect to dashboard
             router.push("/");
         } catch (err) {

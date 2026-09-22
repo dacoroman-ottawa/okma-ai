@@ -10,10 +10,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Build argument for API URL (needed at build time for Next.js client-side code)
-# Default to localhost for local Docker deployment (browser needs to reach backend)
-ARG NEXT_PUBLIC_API_URL=http://localhost:8000
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+# Build argument for internal API URL (used by Next.js rewrites at build time)
+ARG INTERNAL_API_URL=http://backend:8000
+ENV INTERNAL_API_URL=${INTERNAL_API_URL}
 
 # Copy package files
 COPY package*.json ./
