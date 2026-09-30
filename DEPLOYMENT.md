@@ -47,8 +47,16 @@ POSTGRES_DB=kanata_academy
 
 # Backend
 SECRET_KEY=your_jwt_secret_key_here
+
+# Initial admin user (created on first backend startup)
+ADMIN_EMAIL=admin@kanatamusic.com
+ADMIN_PASSWORD=change_me_on_first_login
 EOF
 ```
+
+`ADMIN_EMAIL` / `ADMIN_PASSWORD` create the first ADMIN account, which is the only way
+into a fresh database - user creation otherwise requires an existing admin. The bootstrap
+is idempotent and skips an email that already exists. Omit both to skip it entirely.
 
 **Important:** Use strong, unique values for `POSTGRES_PASSWORD` and `SECRET_KEY` in production.
 

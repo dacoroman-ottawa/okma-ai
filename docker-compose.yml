@@ -44,6 +44,9 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-kanata_academy}
       SECRET_KEY: ${SECRET_KEY:?JWT secret key required}
       PORT: 8000
+      # Initial admin, created on first startup only (omit to skip)
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     depends_on:
       db:
         condition: service_healthy
