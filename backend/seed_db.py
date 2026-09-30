@@ -1,13 +1,42 @@
 import json
+import os
 import uuid
 from datetime import datetime
+from pathlib import Path
 from sqlalchemy.orm import Session
 from .database import SessionLocal, init_db, engine
 from .models import (
     Base, AppUser, Teacher, Student, Instrument, UserRoleEnum,
     QualificationEnum, SkillLevelEnum, SkillLevel, AvailabilitySlot,
-    Enrollment, Class, AttendanceRecord, ClassTypeEnum
+    Enrollment, Class, AttendanceRecord, AttendanceStatusEnum, ClassTypeEnum
 )
+
+BACKEND_DIR = Path(__file__).resolve().parent
+REPO_ROOT = BACKEND_DIR.parent
+
+def load_sample_data(section):
+    """Load a section's sample-data.json, wherever it happens to live.
+
+    product-plan/ holds the canonical fixtures but sits outside the backend Docker build
+    context, so copies are bundled in backend/seed_data/ to let the image seed itself.
+    SEED_DATA_DIR overrides both (expects <dir>/<section>/sample-data.json).
+    """
+    candidates = []
+    override = os.environ.get("SEED_DATA_DIR")
+    if override:
+        candidates.append(Path(override) / section / "sample-data.json")
+    candidates.append(REPO_ROOT / "product-plan" / "sections" / section / "sample-data.json")
+    candidates.append(BACKEND_DIR / "seed_data" / section / "sample-data.json")
+
+    for path in candidates:
+        if path.is_file():
+            with open(path, "r") as f:
+                return json.load(f)
+
+    raise FileNotFoundError(
+        f"No sample-data.json found for section '{section}'. Looked in: "
+        + ", ".join(str(p) for p in candidates)
+    )
 
 def seed_data():
     # Drop all and recreate for a clean seed
@@ -17,8 +46,7 @@ def seed_data():
     db = SessionLocal()
     
     # 1. Load sample data
-    with open("product-plan/sections/people/sample-data.json", "r") as f:
-        data = json.load(f)
+    data = load_sample_data("people")
 
     # 2. Seed Instruments
     instruments_map = {}
@@ -146,8 +174,7 @@ def seed_data():
             db.add(new_slot)
 
     # 8. Seed Classes
-    with open("product-plan/sections/classes/sample-data.json", "r") as f:
-        class_data = json.load(f)
+    class_data = load_sample_data("classes")
 
     for cls in class_data["classes"]:
         new_class = Class(
@@ -174,7 +201,8 @@ def seed_data():
             class_id=att["classId"],
             student_id=att["studentId"],
             date=datetime.strptime(att["date"], "%Y-%m-%d").date(),
-            attended=att["attended"]
+            # Fixtures record a boolean; the model tracks a status enum
+            status=AttendanceStatusEnum.PRESENT if att["attended"] else AttendanceStatusEnum.ABSENT
         )
         db.add(new_att)
 

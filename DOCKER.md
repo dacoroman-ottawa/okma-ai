@@ -54,6 +54,7 @@ This document describes the Docker container orchestration for KanataMusicAcadem
 - `DATABASE_URL=postgresql://postgres:<password>@db:5432/kanata_academy`
 - `SECRET_KEY=<jwt_secret_key>`
 - `PORT=8000`
+- `ADMIN_EMAIL` / `ADMIN_PASSWORD` (optional) - creates the initial ADMIN user on startup
 
 **Purpose:** FastAPI application serving the REST API. Connects to PostgreSQL via Docker network using hostname `db`.
 
@@ -164,6 +165,10 @@ POSTGRES_DB=kanata_academy
 # Backend
 DATABASE_URL=postgresql://postgres:change_me_in_production@db:5432/kanata_academy
 SECRET_KEY=generate_a_secure_random_key_here
+
+# Initial admin user (created on first backend startup)
+ADMIN_EMAIL=admin@kanatamusic.com
+ADMIN_PASSWORD=change_me_on_first_login
 
 # Frontend
 INTERNAL_API_URL=http://backend:8000
