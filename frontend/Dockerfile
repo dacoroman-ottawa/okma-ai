@@ -54,11 +54,17 @@ USER nextjs
 
 # Cloud Run uses PORT environment variable
 ENV PORT=3000
+# The standalone server binds to $HOSTNAME, which Docker sets to the container ID.
+# Without this it listens only on the container IP, so loopback (and the health
+# check below) gets ECONNREFUSED.
+ENV HOSTNAME=0.0.0.0
 EXPOSE 3000
 
 # Health check
+# Probes /login, not /: unauthenticated requests to / 307-redirect to /login,
+# which never satisfies a strict 200 check.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000/', (r) => process.exit(r.statusCode === 200 ? 0 : 1))" || exit 1
+    CMD node -e "require('http').get('http://localhost:3000/login', (r) => process.exit(r.statusCode === 200 ? 0 : 1))" || exit 1
 
 # Start the server
 CMD ["node", "server.js"]
