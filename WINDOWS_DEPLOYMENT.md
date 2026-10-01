@@ -3,8 +3,13 @@
 This guide explains how to deploy KanataMusicAcademy on a Windows PC using Docker Desktop
 with the WSL2 backend.
 
+The images are **built from source on the PC itself**. For a single machine this is the
+simplest option: no registry account, no image publishing step, and no architecture
+mismatch to reason about. `docker-compose.prod.yml` (pre-built images from Docker Hub)
+exists for multi-machine setups and is not used here - see `DEPLOYMENT.md`.
+
 **PostgreSQL does not need to be installed on Windows.** The database runs as the `db`
-container (`postgres:16-alpine`) defined in the compose files.
+container (`postgres:16-alpine`) defined in `docker-compose.yml`.
 
 ## Prerequisites
 
@@ -12,7 +17,7 @@ container (`postgres:16-alpine`) defined in the compose files.
   - Settings -> General -> "Use the WSL 2 based engine"
   - Settings -> Resources -> WSL Integration -> enable your distro (e.g. Ubuntu)
 - A WSL distro (Ubuntu recommended)
-- Internet access (to pull base images / prebuilt images)
+- Internet access (to pull base images)
 
 Run **all commands below from the WSL terminal**, not PowerShell (PowerShell steps are
 marked explicitly).
@@ -37,7 +42,7 @@ git checkout develop
 
 ## 2. Create the `.env` file
 
-Both compose files declare `${POSTGRES_PASSWORD:?...}` and `${SECRET_KEY:?...}`, so
+`docker-compose.yml` declares `${POSTGRES_PASSWORD:?...}` and `${SECRET_KEY:?...}`, so
 Docker Compose **aborts before starting anything** if these are missing. A missing `.env`
 is the most common reason a deployment ends up with no database running.
 
@@ -61,27 +66,16 @@ cat .env   # record these values somewhere safe
 
 `ADMIN_EMAIL` / `ADMIN_PASSWORD` seed the first login - see step 4.
 
-## 3. Start the stack
-
-**Option A - build from source** (recommended; does not depend on Docker Hub images being
-up to date):
+## 3. Build and start the stack
 
 ```bash
 docker compose up -d --build
 ```
 
-**Option B - use prebuilt images** (faster, skips the Next.js build):
+The first build takes several minutes - it compiles the backend dependencies and runs the
+Next.js production build. Subsequent builds reuse Docker's layer cache and are much faster.
 
-```bash
-docker compose -f docker-compose.prod.yml up -d
-```
-
-Note: the automatic admin bootstrap (step 4) and the bundled seed fixtures only exist in
-images built after those changes landed. If `dacoroman/okma-backend:latest` on Docker Hub
-predates them, use Option A until the image is republished.
-
-The first build takes several minutes. Startup order is enforced by health checks:
-`db` -> `backend` -> `frontend`.
+Startup order is enforced by health checks: `db` -> `backend` -> `frontend`.
 
 ```bash
 docker compose ps        # all three services should report "healthy"
@@ -147,6 +141,8 @@ to the Windows host automatically.
 | Backend API | http://localhost:8000 | REST API                                 |
 | PostgreSQL  | localhost:5433        | Container port 5432 mapped to host 5433  |
 
+`/` redirects to `/login` when you are not signed in - that is expected.
+
 The browser only ever talks to port 3000; Next.js rewrites `/api/*` to
 `http://backend:8000` over the Docker network (`frontend/next.config.ts`).
 
@@ -182,14 +178,18 @@ cat backup_2026-09-30.sql | docker exec -i okma-db psql -U postgres kanata_acade
 
 ## 9. Updating
 
+Pull the latest code and rebuild in place. The database volume is untouched.
+
 ```bash
-# Built from source
 git pull
 docker compose up -d --build
+```
 
-# Prebuilt images
-docker compose -f docker-compose.prod.yml pull
-docker compose -f docker-compose.prod.yml up -d
+Both images are rebuilt, but unchanged layers come from cache, and only containers whose
+image actually changed are recreated. To rebuild a single service:
+
+```bash
+docker compose up -d --build backend
 ```
 
 ## Common commands
@@ -206,7 +206,7 @@ docker compose down -v             # stop and DELETE the database volume
 
 **`error while interpolating ... POSTGRES_PASSWORD: Database password required`**
 The `.env` file is missing or incomplete. See step 2. It must sit in the same directory as
-the compose file.
+`docker-compose.yml`.
 
 **Backend is `unhealthy` / restarting**
 Check the database came up first:
@@ -231,11 +231,20 @@ docker exec okma-frontend node -e "require('http').get('http://backend:8000/', r
 
 **Port already in use (3000, 8000 or 5433)**
 Another Windows process holds the port. Find it in PowerShell with
-`netstat -ano | findstr :3000`, or change the host-side port mapping in the compose file.
+`netstat -ano | findstr :3000`, or change the host-side port mapping in
+`docker-compose.yml`.
 
 **Slow builds or file permission errors**
 The repository is probably under `/mnt/c/...`. Move it into the WSL home directory
 (`~/okma-ai`) and clone again.
+
+**Build fails partway through**
+Retry with a clean cache for the affected service:
+
+```bash
+docker compose build --no-cache frontend
+docker compose up -d
+```
 
 **Reset everything (WARNING: deletes all data)**
 

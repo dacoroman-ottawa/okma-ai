@@ -2,10 +2,45 @@
 
 This guide explains how to deploy KanataMusicAcademy using pre-built Docker images from Docker Hub.
 
+> **Status: the published images are out of date.** `dacoroman/okma-backend:latest` and
+> `dacoroman/okma-frontend:latest` were built on 2026-09-22 and are **linux/arm64 only**,
+> so they will not run on an x86_64 host (`no matching manifest for linux/amd64`). They
+> also predate the automatic admin bootstrap, the bundled seed fixtures and the frontend
+> health-check fix. Until they are republished as multi-arch, deploy by building from
+> source with `docker-compose.yml` - see **WINDOWS_DEPLOYMENT.md** for a full walkthrough.
+>
+> For a single deployment target, building from source is the recommended approach
+> regardless: no registry account, no publishing step, no architecture mismatch.
+
 ## Prerequisites
 
 - Docker and Docker Compose installed
 - Access to the internet (to pull images)
+
+## Publishing updated images
+
+If you do need the Hub images, build them on a host matching the deployment target (or
+cross-build with `buildx`) and push both architectures:
+
+```bash
+docker login -u dacoroman
+docker buildx create --name okma --driver docker-container --use --bootstrap
+
+VERSION=v1.1.0
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t dacoroman/okma-backend:$VERSION -t dacoroman/okma-backend:latest \
+  --push ./backend
+docker buildx build --platform linux/amd64,linux/arm64 \
+  --build-arg INTERNAL_API_URL=http://backend:8000 \
+  -t dacoroman/okma-frontend:$VERSION -t dacoroman/okma-frontend:latest \
+  --push ./frontend
+
+docker buildx imagetools inspect dacoroman/okma-backend:latest   # verify both platforms
+```
+
+Tag a version alongside `latest`: the compose file pins `:latest`, so an untagged push
+leaves no way to roll back. Cross-building amd64 on Apple Silicon runs under QEMU and is
+slow for the Next.js build and the backend's native dependencies.
 
 ## Docker Hub Images
 
