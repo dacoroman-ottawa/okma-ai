@@ -127,7 +127,14 @@ export function useUsers() {
             throw new Error(error.detail || "Failed to send reset link");
         }
 
-        return true;
+        // A 200 only means the request was handled. In simulation mode the
+        // backend reports emailDelivered: false and nothing was actually sent,
+        // so hand the caller the real outcome rather than a bare true.
+        const body = await res.json();
+        return {
+            delivered: body.emailDelivered === true,
+            message: body.message as string | undefined
+        };
     };
 
     const getUser = (id: string) => users.find((u) => u.id === id);

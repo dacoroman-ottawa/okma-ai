@@ -277,6 +277,14 @@ async def create_teacher(
             "Teacher %s created but the welcome email to %s failed: %s",
             new_teacher.id, new_user.email, e,
         )
+    except Exception:
+        # Backstop: anything else escaping here would 500 a request whose
+        # teacher is already committed, leaving the caller unable to tell
+        # that the record exists.
+        logger.exception(
+            "Teacher %s created but the welcome email to %s raised unexpectedly",
+            new_teacher.id, new_user.email,
+        )
 
     return {
         "emailDelivered": email_delivered,
@@ -458,6 +466,13 @@ async def create_student(
         logger.error(
             "Student %s created but the welcome email to %s failed: %s",
             new_student.id, new_user.email, e,
+        )
+    except Exception:
+        # Backstop: see the teacher branch above - the student is committed,
+        # so an unexpected error must not turn this into a 500.
+        logger.exception(
+            "Student %s created but the welcome email to %s raised unexpectedly",
+            new_student.id, new_user.email,
         )
 
     return {

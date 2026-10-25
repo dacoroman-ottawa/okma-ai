@@ -100,6 +100,13 @@ async def create_user(
             "User %s created but the activation email to %s failed: %s",
             new_user.id, new_user.email, e,
         )
+    except Exception:
+        # Backstop: the user is already committed, so an unexpected error must
+        # not turn this into a 500 that hides a successful creation.
+        logger.exception(
+            "User %s created but the activation email to %s raised unexpectedly",
+            new_user.id, new_user.email,
+        )
 
     return {**serialize_user(new_user), "emailDelivered": delivered}
 
@@ -207,8 +214,21 @@ async def send_reset_link(
             status_code=502,
             detail="The password reset email could not be sent. Check the mail server configuration.",
         )
+    except Exception:
+        logger.exception("Reset link to %s raised unexpectedly", user.email)
+        raise HTTPException(
+            status_code=502,
+            detail="The password reset email could not be sent. Check the mail server configuration.",
+        )
 
+    # The message is what the UI shows, so it has to match what actually
+    # happened: in simulation mode nothing was sent.
     return {
-        "message": "Password reset link sent successfully",
+        "message": (
+            "Password reset link sent successfully"
+            if delivered
+            else "Email is in simulation mode - no message was sent. "
+                 "The reset link is in the server logs."
+        ),
         "emailDelivered": delivered,
     }

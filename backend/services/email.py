@@ -5,6 +5,7 @@ import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from pathlib import Path
+from urllib.parse import urlencode
 
 # Load .env file from backend directory
 from dotenv import load_dotenv
@@ -13,9 +14,31 @@ load_dotenv(env_path)
 
 logger = logging.getLogger(__name__)
 
+
+def _int_env(name: str, default: int) -> int:
+    """Read an integer setting, falling back to the default if it is unusable.
+
+    These are read at import time and main.py imports this module, so raising
+    here would take the whole API down. A blank or malformed value is a
+    misconfiguration worth shouting about, not worth refusing to boot over -
+    note that os.getenv returns "" (not the default) for a var that is set but
+    empty, which is exactly what an unset ``SMTP_TIMEOUT=`` in compose yields.
+    """
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        logger.error(
+            "%s=%r is not an integer; falling back to %s", name, raw, default
+        )
+        return default
+
+
 # Email configuration from environment variables
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_PORT = _int_env("SMTP_PORT", 587)
 SMTP_USER = os.getenv("SMTP_USER", "")
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", "noreply@kanatamusic.com")
@@ -23,11 +46,12 @@ SMTP_FROM_NAME = os.getenv("SMTP_FROM_NAME", "Kanata Music Academy")
 
 # Seconds to wait on the SMTP socket. Without this smtplib blocks forever on an
 # unresponsive server.
-SMTP_TIMEOUT = int(os.getenv("SMTP_TIMEOUT", "15"))
+SMTP_TIMEOUT = _int_env("SMTP_TIMEOUT", 15)
 
 # Base URL of the frontend, used to build the links we email out. Must be set
 # in any deployed environment or recipients get links to their own machine.
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000").rstrip("/")
+# Treat an empty value as unset: a bare "/reset-password?..." link is useless.
+FRONTEND_URL = (os.getenv("FRONTEND_URL", "").strip() or "http://localhost:3000").rstrip("/")
 
 # Set to True to actually send emails, False to just log them
 SEND_REAL_EMAILS = os.getenv("SEND_REAL_EMAILS", "false").lower() == "true"
@@ -117,12 +141,19 @@ async def _send_email(to_email: str, subject: str, body: str) -> bool:
 
 
 def _password_link(email: str) -> str:
-    """Build the tokenised reset/activation link for a recipient."""
+    """Build the tokenised reset/activation link for a recipient.
+
+    The query string is percent-encoded: a plus-addressed recipient such as
+    ``a+b@example.com`` would otherwise arrive at the frontend as ``a b@...``,
+    because a raw ``+`` in a query string decodes to a space - and the reset
+    endpoint checks the email against the token, so the link would always fail.
+    """
     from ..auth import create_password_reset_token
 
     token = create_password_reset_token(email)
     base = FRONTEND_URL.rstrip("/")
-    return f"{base}/reset-password?token={token}&email={email}"
+    query = urlencode({"token": token, "email": email})
+    return f"{base}/reset-password?{query}"
 
 
 async def send_welcome_email(email: str, name: str, role: str) -> bool:

@@ -59,6 +59,7 @@ services:
       SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-noreply@kanatamusic.com}
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Kanata Music Academy}
       SMTP_TIMEOUT: ${SMTP_TIMEOUT:-15}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       db:
         condition: service_healthy

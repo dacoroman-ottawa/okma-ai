@@ -100,6 +100,10 @@ async def forgot_password(
         await send_password_reset_email(user.email, user.name)
     except EmailDeliveryError as e:
         logger.error("Password reset email to %s failed: %s", user.email, e)
+    except Exception:
+        # Backstop: an unexpected error here would 500 only for addresses that
+        # exist, turning this endpoint back into an account-existence oracle.
+        logger.exception("Password reset email to %s raised unexpectedly", user.email)
 
     return {"message": "If an account exists with this email, a reset link has been sent."}
 

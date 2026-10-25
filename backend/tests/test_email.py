@@ -8,12 +8,14 @@ Covers the three defects documented in docs/email-findings.md:
   3. Delivery failures must surface to the caller instead of being swallowed.
 """
 import asyncio
+import logging
 import os
 import subprocess
 import sys
 import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -77,6 +79,24 @@ class TestFrontendUrl:
 
         assert "example.com//reset-password" not in deliver.call_args.args[2]
 
+    def test_plus_addressed_email_survives_the_round_trip(self, monkeypatch):
+        """A raw ``+`` in the query string decodes to a space on the frontend.
+
+        The reset endpoint checks the email against the token, so an unencoded
+        plus address produces a link that can never succeed.
+        """
+        monkeypatch.setattr(
+            email_service, "FRONTEND_URL", "https://academy.example.com"
+        )
+        address = "ann+academy@example.com"
+
+        link = email_service._password_link(address)
+
+        # Parse it the way the frontend's searchParams.get("email") would.
+        query = parse_qs(urlparse(link).query)
+        assert query["email"] == [address]
+        assert "+academy" not in urlparse(link).query
+
     def test_defaults_to_localhost_for_development(self):
         """With no FRONTEND_URL configured, local development still works.
 
@@ -139,11 +159,31 @@ class TestNonBlocking:
             f"ticker took {ticker_elapsed:.3f}s, so the send blocked the loop"
         )
 
-    def test_smtp_connection_uses_a_timeout(self, smtp_mock):
+    def test_smtp_connection_uses_the_default_timeout(self, smtp_mock):
+        """Assert the literal default, not the constant - comparing the kwarg
+        against SMTP_TIMEOUT would pass even if the default were 0."""
         smtp_cls, _ = smtp_mock
         asyncio.run(email_service.send_password_reset_email("a@b.com", "Ann"))
 
-        assert smtp_cls.call_args.kwargs.get("timeout") == email_service.SMTP_TIMEOUT
+        assert smtp_cls.call_args.kwargs["timeout"] == 15
+
+    def test_smtp_timeout_is_configurable(self, smtp_mock, monkeypatch):
+        smtp_cls, _ = smtp_mock
+        monkeypatch.setattr(email_service, "SMTP_TIMEOUT", 42)
+        asyncio.run(email_service.send_password_reset_email("a@b.com", "Ann"))
+
+        assert smtp_cls.call_args.kwargs["timeout"] == 42
+
+    @pytest.mark.parametrize("raw", ["", "   ", "not-a-number"])
+    def test_unusable_timeout_falls_back_instead_of_crashing(self, raw, monkeypatch):
+        """A blank or malformed value must not take down the app at import.
+
+        os.getenv returns "" for a var that is set but empty, so a bare
+        ``SMTP_TIMEOUT=`` in compose would reach int() and raise.
+        """
+        monkeypatch.setenv("SMTP_TIMEOUT", raw)
+
+        assert email_service._int_env("SMTP_TIMEOUT", 15) == 15
 
 
 class TestFailuresSurface:
@@ -186,3 +226,43 @@ class TestFailuresSurface:
         )
 
         assert result is False
+
+
+class TestStartupDiagnostic:
+    """log_email_configuration runs at import of main.py, so it must not raise
+    and must make a misconfigured deployment visible."""
+
+    def test_simulation_mode_warns(self, monkeypatch, caplog):
+        monkeypatch.setattr(email_service, "SEND_REAL_EMAILS", False)
+        with caplog.at_level(logging.INFO, logger=email_service.__name__):
+            email_service.log_email_configuration()
+
+        assert any(
+            r.levelno == logging.WARNING and "SIMULATION" in r.message
+            for r in caplog.records
+        )
+
+    def test_missing_credentials_is_an_error(self, monkeypatch, caplog):
+        monkeypatch.setattr(email_service, "SEND_REAL_EMAILS", True)
+        monkeypatch.setattr(email_service, "SMTP_USER", "")
+        monkeypatch.setattr(email_service, "SMTP_PASSWORD", "")
+        with caplog.at_level(logging.INFO, logger=email_service.__name__):
+            email_service.log_email_configuration()
+
+        assert any(r.levelno == logging.ERROR for r in caplog.records)
+
+    def test_healthy_configuration_is_reported(self, real_sends, caplog):
+        """The happy path must say something: DEPLOYMENT.md tells operators to
+        grep the logs for it, so silence reads as a broken deployment."""
+        with caplog.at_level(logging.INFO, logger=email_service.__name__):
+            email_service.log_email_configuration()
+
+        messages = [r.getMessage() for r in caplog.records]
+        assert any("sender@example.com" in m for m in messages)
+        assert any(email_service.FRONTEND_URL in m for m in messages)
+
+    def test_never_logs_the_password(self, real_sends, caplog):
+        with caplog.at_level(logging.INFO, logger=email_service.__name__):
+            email_service.log_email_configuration()
+
+        assert all("app-password" not in r.getMessage() for r in caplog.records)

@@ -10,6 +10,21 @@ from .bootstrap_admin import bootstrap_admin
 from .services.email import log_email_configuration
 from fastapi.exceptions import RequestValidationError
 from datetime import timedelta
+import logging
+import os
+
+# uvicorn only configures its own "uvicorn.*" loggers, so without this the
+# application's INFO records are dropped by logging.lastResort (WARNING and
+# above only) - which would make the startup email diagnostic below invisible
+# on exactly the healthy path DEPLOYMENT.md tells operators to check for.
+# An unknown level would raise here and take the whole API down, so fall back.
+_log_level = os.getenv("LOG_LEVEL", "").strip().upper() or "INFO"
+if not isinstance(getattr(logging, _log_level, None), int):
+    _log_level = "INFO"
+logging.basicConfig(
+    level=_log_level,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 app = FastAPI(title="KanataMusicAcademy API")
 

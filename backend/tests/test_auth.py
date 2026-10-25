@@ -167,6 +167,29 @@ class TestForgotPassword:
             for record in caplog.records
         ), "delivery failure was not logged at ERROR"
 
+    def test_forgot_password_stays_generic_on_an_unexpected_error(self, caplog):
+        """An unexpected error would 500 only for addresses that exist, which
+        turns this endpoint back into the enumeration oracle it guards against.
+        """
+        from unittest.mock import patch, AsyncMock
+
+        with patch(
+            "backend.services.email._send_email",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("executor shut down"),
+        ):
+            with caplog.at_level(logging.ERROR):
+                real = client.post("/auth/forgot-password", json={
+                    "email": "active@test.com"
+                })
+                missing = client.post("/auth/forgot-password", json={
+                    "email": "nobody@test.com"
+                })
+
+        assert real.status_code == missing.status_code == 200
+        assert real.json() == missing.json()
+        assert any("unexpectedly" in r.getMessage() for r in caplog.records)
+
 
 class TestResetPassword:
     """Tests for POST /auth/reset-password"""

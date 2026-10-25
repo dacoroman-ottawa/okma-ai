@@ -128,3 +128,47 @@ and handle it per endpoint:
   files and document them in `backend/.env.example`.
 - Log the effective email configuration at startup (never the password) so
   simulation mode is obvious in the logs instead of silent.
+
+---
+
+## Follow-ups found while reviewing the fix
+
+The first pass introduced or left behind six problems, all now fixed:
+
+1. **`docker-compose.prod.yml` defaulted `SEND_REAL_EMAILS` to `false`**, which
+   recreated the exact root cause in production. It is now required (`:?`), so a
+   deployment has to state which mode it wants.
+2. **Narrowing to `except EmailDeliveryError` made other errors fatal.** The
+   record is committed before the send, and `expire_on_commit` defaults to
+   `True`, so a post-commit attribute read can raise `sqlalchemy.exc.*`; JWT
+   signing and `asyncio.to_thread` can raise too. Each call site now has an
+   `except Exception` backstop. In `/auth/forgot-password` this mattered most:
+   a 500 for real accounts and a 200 for unknown ones is an enumeration oracle
+   in the handler specifically written to avoid one.
+3. **Plus-addressed recipients could never activate.** The email was
+   interpolated raw into the query string and `+` decodes to a space, so
+   `ann+academy@example.com` arrived as `ann academy@example.com` and the reset
+   endpoint rejected the token. The query string is now `urlencode`d.
+4. **An empty env var crashed the app at import.** `os.getenv` returns `""`
+   (not the default) for a variable that is set but blank, so `SMTP_TIMEOUT=`
+   reached `int("")` and raised - taking down the whole API, since `main.py`
+   imports the email module. Integer settings now fall back and log.
+5. **`emailDelivered` had no consumer.** The UI alerted "sent successfully"
+   regardless. `useUsers.sendResetLink` now returns the real outcome, the
+   endpoint's message reflects simulation mode, and user creation warns when
+   the activation email did not go out.
+6. **Two of the three conftest email patches were inert.** The routes do
+   `from ..services.email import ...`, binding the name in their own module, so
+   patching the service module had no effect. Only `_send_email` - the single
+   chokepoint every sender funnels through - is patched now.
+
+Still open, and deliberately not addressed here:
+
+- The startup diagnostic was invisible on the healthy path because uvicorn only
+  configures its own `uvicorn.*` loggers and `logging.lastResort` drops INFO.
+  `main.py` now calls `logging.basicConfig`, which fixes it, but the app has no
+  real logging configuration and should get one.
+- `backend/tests/test_classes.py` writes an on-disk `test.db` that is never torn
+  down, so `test_credit_refund_when_status_changes_from_present` fails on any
+  second consecutive run. Reproduces on `develop`; unrelated to email.
+- `kanata_academy.db` is a tracked file at the repo root.

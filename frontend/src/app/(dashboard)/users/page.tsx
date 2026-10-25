@@ -39,7 +39,15 @@ export default function UsersPage() {
 
     const handleSaveUser = async (data: CreateUserData | UpdateUserData) => {
         if (modalMode === "add") {
-            await createUser(data as CreateUserData);
+            const created = await createUser(data as CreateUserData);
+            // The account exists either way, but without the activation email
+            // the user has no way in - say so instead of letting them wait.
+            if (created?.emailDelivered !== true) {
+                alert(
+                    `${created.name} was created, but the activation email could not be sent. ` +
+                    `Use "Send reset link" once email is configured.`
+                );
+            }
         } else if (selectedUser) {
             await updateUser(selectedUser.id, data as UpdateUserData);
         }
@@ -84,8 +92,13 @@ export default function UsersPage() {
 
     const handleSendResetLink = async (userId: string) => {
         try {
-            await sendResetLink(userId);
-            alert("Password reset link sent successfully");
+            const { delivered, message } = await sendResetLink(userId);
+            alert(
+                message ??
+                    (delivered
+                        ? "Password reset link sent successfully"
+                        : "No email was sent - the mail server is not configured.")
+            );
         } catch (err) {
             alert(err instanceof Error ? err.message : "Failed to send reset link");
         }
