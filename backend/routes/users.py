@@ -4,8 +4,11 @@ from typing import List, Annotated, Any
 from ..database import get_db
 from ..models import AppUser, UserRoleEnum
 from ..auth import get_current_user, RoleChecker, get_password_hash
-from ..services.email import send_password_reset_email
+from ..services.email import EmailDeliveryError, send_password_reset_email
+import logging
 import uuid
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -86,10 +89,19 @@ async def create_user(
     db.commit()
     db.refresh(new_user)
 
-    # Send password reset email so user can set their password
-    await send_password_reset_email(new_user.email, new_user.name)
+    # Send password reset email so user can set their password. The user is
+    # already committed, so a delivery failure must not fail the request - but
+    # the admin needs to know the activation link never went out.
+    delivered = False
+    try:
+        delivered = await send_password_reset_email(new_user.email, new_user.name)
+    except EmailDeliveryError as e:
+        logger.error(
+            "User %s created but the activation email to %s failed: %s",
+            new_user.id, new_user.email, e,
+        )
 
-    return serialize_user(new_user)
+    return {**serialize_user(new_user), "emailDelivered": delivered}
 
 
 @router.put("/{user_id}")
@@ -185,6 +197,18 @@ async def send_reset_link(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    await send_password_reset_email(user.email, user.name)
+    # Sending is the entire purpose of this endpoint, so a failure is a failed
+    # request rather than something to log and forget.
+    try:
+        delivered = await send_password_reset_email(user.email, user.name)
+    except EmailDeliveryError as e:
+        logger.error("Reset link to %s failed: %s", user.email, e)
+        raise HTTPException(
+            status_code=502,
+            detail="The password reset email could not be sent. Check the mail server configuration.",
+        )
 
-    return {"message": "Password reset link sent successfully"}
+    return {
+        "message": "Password reset link sent successfully",
+        "emailDelivered": delivered,
+    }

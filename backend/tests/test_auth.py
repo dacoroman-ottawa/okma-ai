@@ -1,3 +1,5 @@
+import logging
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -138,6 +140,32 @@ class TestForgotPassword:
 
         assert response.status_code == 200
         assert "reset link has been sent" in response.json()["message"].lower()
+
+    def test_forgot_password_stays_generic_when_delivery_fails(self, caplog):
+        """A delivery failure must be logged but must not leak account existence.
+
+        Returning an error only for real accounts would itself be an
+        enumeration oracle, so the response stays identical and the failure is
+        surfaced via an ERROR log instead.
+        """
+        from unittest.mock import patch
+        from backend.services.email import EmailDeliveryError
+
+        with patch(
+            "backend.services.email._send_email",
+            side_effect=EmailDeliveryError("smtp down"),
+        ):
+            with caplog.at_level(logging.ERROR):
+                response = client.post("/auth/forgot-password", json={
+                    "email": "active@test.com"
+                })
+
+        assert response.status_code == 200
+        assert "reset link has been sent" in response.json()["message"].lower()
+        assert any(
+            record.levelname == "ERROR" and "active@test.com" in record.getMessage()
+            for record in caplog.records
+        ), "delivery failure was not logged at ERROR"
 
 
 class TestResetPassword:

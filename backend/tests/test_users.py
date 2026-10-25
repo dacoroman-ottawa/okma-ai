@@ -164,6 +164,27 @@ class TestCreateUser:
         assert data["isAdmin"] is False
         assert data["isActive"] is True
 
+    def test_create_user_still_succeeds_but_flags_failed_email(self):
+        """The user is already committed, so creation stands - but the admin
+        must be told the activation email never went out."""
+        from unittest.mock import patch
+        from backend.services.email import EmailDeliveryError
+
+        app.dependency_overrides[get_current_user] = mock_admin_user
+
+        with patch(
+            "backend.services.email._send_email",
+            side_effect=EmailDeliveryError("smtp down"),
+        ):
+            response = client.post("/users", json={
+                "name": "Undeliverable User",
+                "email": "undeliverable@test.com",
+                "isAdmin": False
+            })
+
+        assert response.status_code == 200
+        assert response.json()["emailDelivered"] is False
+
     def test_create_admin_user(self):
         """Admin can create another admin user"""
         app.dependency_overrides[get_current_user] = mock_admin_user
@@ -379,3 +400,35 @@ class TestSendResetLink:
         response = client.post("/users/nonexistent/send-reset-link")
 
         assert response.status_code == 404
+
+    def test_send_reset_link_reports_delivery_failure(self):
+        """Sending is the whole point of this endpoint, so failure must 502."""
+        from unittest.mock import patch
+        from backend.services.email import EmailDeliveryError
+
+        app.dependency_overrides[get_current_user] = mock_admin_user
+
+        with patch(
+            "backend.services.email._send_email",
+            side_effect=EmailDeliveryError("smtp down"),
+        ):
+            response = client.post("/users/user-1/send-reset-link")
+
+        assert response.status_code == 502
+        assert "could not be sent" in response.json()["detail"].lower()
+
+    def test_send_reset_link_reports_simulation_mode(self):
+        """Simulation mode is not a real delivery and must not claim success."""
+        from unittest.mock import patch, AsyncMock
+
+        app.dependency_overrides[get_current_user] = mock_admin_user
+
+        with patch(
+            "backend.services.email._send_email",
+            new_callable=AsyncMock,
+            return_value=False,
+        ):
+            response = client.post("/users/user-1/send-reset-link")
+
+        assert response.status_code == 200
+        assert response.json()["emailDelivered"] is False

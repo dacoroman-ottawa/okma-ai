@@ -7,6 +7,7 @@ from .database import init_db, get_db
 from .routes import people, classes, payments, inventory, dashboard, users, auth
 from .auth import authenticate_user, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from .bootstrap_admin import bootstrap_admin
+from .services.email import log_email_configuration
 from fastapi.exceptions import RequestValidationError
 from datetime import timedelta
 
@@ -17,6 +18,9 @@ init_db()
 
 # Create the initial admin if ADMIN_EMAIL/ADMIN_PASSWORD are set (no-op otherwise)
 bootstrap_admin()
+
+# Report whether mail is actually configured, so simulation mode is visible
+log_email_configuration()
 
 # Configure CORS
 app.add_middleware(

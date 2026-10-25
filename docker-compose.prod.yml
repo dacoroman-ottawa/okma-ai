@@ -46,6 +46,19 @@ services:
       # Initial admin, created on first startup only (omit to skip)
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # Public base URL used to build emailed password reset / activation
+      # links. Required: the default only works for a local deployment.
+      FRONTEND_URL: ${FRONTEND_URL:?Public frontend URL required for email links}
+      # Email delivery. .env is excluded from the image, so these must be
+      # passed in explicitly or the backend silently runs in simulation mode.
+      SEND_REAL_EMAILS: ${SEND_REAL_EMAILS:-false}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-noreply@kanatamusic.com}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-Kanata Music Academy}
+      SMTP_TIMEOUT: ${SMTP_TIMEOUT:-15}
     depends_on:
       db:
         condition: service_healthy
