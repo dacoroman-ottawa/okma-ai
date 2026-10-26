@@ -86,12 +86,38 @@ SECRET_KEY=your_jwt_secret_key_here
 # Initial admin user (created on first backend startup)
 ADMIN_EMAIL=admin@kanatamusic.com
 ADMIN_PASSWORD=change_me_on_first_login
+
+# Public URL of the frontend, used to build emailed password reset and
+# account activation links
+FRONTEND_URL=https://academy.example.com
+
+# Email delivery (for Gmail, SMTP_PASSWORD must be an App Password)
+SEND_REAL_EMAILS=true
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+SMTP_FROM_NAME=Kanata Music Academy
 EOF
 ```
 
 `ADMIN_EMAIL` / `ADMIN_PASSWORD` create the first ADMIN account, which is the only way
 into a fresh database - user creation otherwise requires an existing admin. The bootstrap
 is idempotent and skips an email that already exists. Omit both to skip it entirely.
+
+`FRONTEND_URL` is required by `docker-compose.prod.yml`. It is the base of every link
+the backend emails out, so if it is wrong, password reset and account activation links
+are broken for every recipient.
+
+`SEND_REAL_EMAILS` is also required by `docker-compose.prod.yml`, and has to be set
+explicitly to `true` or `false`. It is not defaulted on purpose: a stack that quietly
+falls back to simulation mode reports every email as sent while sending nothing.
+
+The backend image deliberately excludes `backend/.env`, so the `SMTP_*` and
+`SEND_REAL_EMAILS` values above must come from this file. In simulation mode messages
+are written to the container logs and never sent. The effective configuration is logged
+at startup - check it with `docker compose logs backend | grep -i email`. Set
+`LOG_LEVEL` (default `INFO`) to change application log verbosity.
 
 **Important:** Use strong, unique values for `POSTGRES_PASSWORD` and `SECRET_KEY` in production.
 

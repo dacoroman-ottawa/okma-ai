@@ -1,4 +1,6 @@
+import logging
 import pytest
+from unittest.mock import AsyncMock, patch
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -8,6 +10,7 @@ from backend.models import (
     AppUser, Teacher, Instrument, UserRoleEnum, QualificationEnum
 )
 from backend.auth import get_current_user
+from backend.services.email import EmailDeliveryError
 
 # Setup test database (SQLite for tests)
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_teachers.db"
@@ -392,3 +395,76 @@ class TestUpdateTeacherAvailability:
 
         assert response.status_code == 403
         assert response.json()["detail"] == "Not authorized"
+
+
+class TestCreateTeacherEmail:
+    """The welcome email must never decide whether teacher creation succeeds.
+
+    The teacher is committed before the send is attempted, so a failure has to
+    be reported through the response rather than by failing the request.
+    """
+
+    PAYLOAD = {
+        "name": "New Teacher",
+        "email": "new.teacher@test.com",
+        "primaryContact": "555-0000",
+        "hourlyRate": 60.0,
+    }
+
+    def test_reports_delivery_on_the_happy_path(self):
+        app.dependency_overrides[get_current_user] = mock_admin_user
+        with patch(
+            "backend.services.email._send_email",
+            new_callable=AsyncMock,
+            return_value=True,
+        ):
+            response = client.post("/people/teachers", json=self.PAYLOAD)
+
+        assert response.status_code == 200
+        assert response.json()["emailDelivered"] is True
+
+    def test_simulation_mode_is_reported_as_undelivered(self):
+        app.dependency_overrides[get_current_user] = mock_admin_user
+        with patch(
+            "backend.services.email._send_email",
+            new_callable=AsyncMock,
+            return_value=False,
+        ):
+            response = client.post("/people/teachers", json=self.PAYLOAD)
+
+        assert response.status_code == 200
+        assert response.json()["emailDelivered"] is False
+
+    def test_delivery_failure_still_creates_the_teacher(self, caplog):
+        app.dependency_overrides[get_current_user] = mock_admin_user
+        with patch(
+            "backend.services.email._send_email",
+            new_callable=AsyncMock,
+            side_effect=EmailDeliveryError("smtp is down"),
+        ):
+            with caplog.at_level(logging.ERROR):
+                response = client.post("/people/teachers", json=self.PAYLOAD)
+
+        assert response.status_code == 200
+        assert response.json()["emailDelivered"] is False
+        assert any("welcome email" in r.getMessage() for r in caplog.records)
+
+        # The teacher must really exist despite the failed email.
+        listed = client.get("/people/teachers").json()
+        assert any(t["email"] == self.PAYLOAD["email"] for t in listed)
+
+    def test_unexpected_error_does_not_become_a_500(self, caplog):
+        """Only EmailDeliveryError is expected, but anything else escaping
+        would 500 a request whose teacher is already committed."""
+        app.dependency_overrides[get_current_user] = mock_admin_user
+        with patch(
+            "backend.services.email._send_email",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("executor shut down"),
+        ):
+            with caplog.at_level(logging.ERROR):
+                response = client.post("/people/teachers", json=self.PAYLOAD)
+
+        assert response.status_code == 200
+        assert response.json()["emailDelivered"] is False
+        assert any("unexpectedly" in r.getMessage() for r in caplog.records)

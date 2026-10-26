@@ -49,6 +49,14 @@ from backend.models import (
 from backend.main import app
 
 
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "real_email_service: exercise the real email service instead of the "
+        "autouse mocks (the test must intercept SMTP itself)",
+    )
+
+
 @pytest.fixture(autouse=True, scope="function")
 def reset_app_overrides():
     """Reset app dependency overrides after each test to prevent state pollution."""
@@ -61,25 +69,30 @@ def reset_app_overrides():
 
 
 @pytest.fixture(autouse=True, scope="function")
-def mock_email_sending():
-    """Mock email sending functions to prevent actual emails during tests."""
+def mock_email_sending(request):
+    """Mock email sending functions to prevent actual emails during tests.
+
+    Tests marked with ``@pytest.mark.real_email_service`` opt out, so they can
+    exercise the email service itself. Those tests are responsible for
+    intercepting SMTP themselves.
+    """
+    if request.node.get_closest_marker("real_email_service"):
+        yield None
+        return
+
+    # ``_send_email`` is the single chokepoint: every sender funnels through it
+    # and it is the only thing that reaches SMTP, so patching it here blocks
+    # all delivery. Do NOT also patch send_welcome_email /
+    # send_password_reset_email on the service module - the routes bind those
+    # names at import (``from ..services.email import ...``), so such a patch
+    # is inert, and patching them on the route modules instead would short
+    # out the chokepoint that individual tests override to simulate failures.
     with patch(
-        "backend.services.email.send_welcome_email",
-        new_callable=AsyncMock,
-        return_value=True
-    ) as mock_welcome, patch(
-        "backend.services.email.send_password_reset_email",
-        new_callable=AsyncMock,
-        return_value=True
-    ) as mock_reset, patch(
         "backend.services.email._send_email",
+        new_callable=AsyncMock,
         return_value=True
     ) as mock_send:
-        yield {
-            "send_welcome_email": mock_welcome,
-            "send_password_reset_email": mock_reset,
-            "_send_email": mock_send
-        }
+        yield {"_send_email": mock_send}
 
 
 # This ensures all models are loaded when pytest collects tests

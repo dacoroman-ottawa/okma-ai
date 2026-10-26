@@ -4,8 +4,11 @@ from typing import List, Annotated, Any
 from ..database import get_db
 from ..models import Teacher, Student, AppUser, UserRoleEnum, AvailabilitySlot, SkillLevel, Instrument, Enrollment, EnrollmentStatusEnum
 from ..auth import get_current_user, RoleChecker
-from ..services.email import send_welcome_email
+from ..services.email import EmailDeliveryError, send_welcome_email
+import logging
 import uuid
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/people", tags=["people"])
 
@@ -262,13 +265,29 @@ async def create_teacher(
     db.commit()
     db.refresh(new_teacher)
 
-    # 3. Trigger Welcome Email (non-blocking)
+    # 3. Trigger Welcome Email. The teacher is already committed, so a delivery
+    # failure must not fail the request - but it must not be silent either.
+    email_delivered = False
     try:
-        await send_welcome_email(new_user.email, new_user.name, "Teacher")
-    except Exception as e:
-        print(f"Failed to send welcome email: {e}")
+        email_delivered = await send_welcome_email(
+            new_user.email, new_user.name, "Teacher"
+        )
+    except EmailDeliveryError as e:
+        logger.error(
+            "Teacher %s created but the welcome email to %s failed: %s",
+            new_teacher.id, new_user.email, e,
+        )
+    except Exception:
+        # Backstop: anything else escaping here would 500 a request whose
+        # teacher is already committed, leaving the caller unable to tell
+        # that the record exists.
+        logger.exception(
+            "Teacher %s created but the welcome email to %s raised unexpectedly",
+            new_teacher.id, new_user.email,
+        )
 
     return {
+        "emailDelivered": email_delivered,
         "id": new_teacher.id,
         "name": new_teacher.name,
         "email": new_teacher.email,
@@ -436,13 +455,28 @@ async def create_student(
     db.commit()
     db.refresh(new_student)
 
-    # 3. Trigger Welcome Email (non-blocking)
+    # 3. Trigger Welcome Email. The student is already committed, so a delivery
+    # failure must not fail the request - but it must not be silent either.
+    email_delivered = False
     try:
-        await send_welcome_email(new_user.email, new_user.name, "Student")
-    except Exception as e:
-        print(f"Failed to send welcome email: {e}")
+        email_delivered = await send_welcome_email(
+            new_user.email, new_user.name, "Student"
+        )
+    except EmailDeliveryError as e:
+        logger.error(
+            "Student %s created but the welcome email to %s failed: %s",
+            new_student.id, new_user.email, e,
+        )
+    except Exception:
+        # Backstop: see the teacher branch above - the student is committed,
+        # so an unexpected error must not turn this into a 500.
+        logger.exception(
+            "Student %s created but the welcome email to %s raised unexpectedly",
+            new_student.id, new_user.email,
+        )
 
     return {
+        "emailDelivered": email_delivered,
         "id": new_student.id,
         "name": new_student.name,
         "email": new_student.email,

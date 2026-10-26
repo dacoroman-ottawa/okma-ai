@@ -164,6 +164,70 @@ class TestCreateUser:
         assert data["isAdmin"] is False
         assert data["isActive"] is True
 
+    def test_create_user_still_succeeds_but_flags_failed_email(self):
+        """The user is already committed, so creation stands - but the admin
+        must be told the activation email never went out."""
+        from unittest.mock import patch
+        from backend.services.email import EmailDeliveryError
+
+        app.dependency_overrides[get_current_user] = mock_admin_user
+
+        with patch(
+            "backend.services.email._send_email",
+            side_effect=EmailDeliveryError("smtp down"),
+        ):
+            response = client.post("/users", json={
+                "name": "Undeliverable User",
+                "email": "undeliverable@test.com",
+                "isAdmin": False
+            })
+
+        assert response.status_code == 200
+        assert response.json()["emailDelivered"] is False
+
+    def test_create_user_reports_a_successful_email(self):
+        """Pin the happy path: without this, emailDelivered could be wired to
+        a constant False and every other assertion would still pass."""
+        from unittest.mock import patch, AsyncMock
+
+        app.dependency_overrides[get_current_user] = mock_admin_user
+
+        with patch(
+            "backend.services.email._send_email",
+            new_callable=AsyncMock,
+            return_value=True,
+        ):
+            response = client.post("/users", json={
+                "name": "Deliverable User",
+                "email": "deliverable@test.com",
+                "isAdmin": False
+            })
+
+        assert response.status_code == 200
+        assert response.json()["emailDelivered"] is True
+
+    def test_create_user_survives_an_unexpected_email_error(self):
+        """Only EmailDeliveryError is anticipated. Anything else - a SQLAlchemy
+        error from a post-commit attribute read, a RuntimeError from a shutting
+        down executor - must not 500 a request whose user already exists."""
+        from unittest.mock import patch, AsyncMock
+
+        app.dependency_overrides[get_current_user] = mock_admin_user
+
+        with patch(
+            "backend.services.email._send_email",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("executor shut down"),
+        ):
+            response = client.post("/users", json={
+                "name": "Surprising User",
+                "email": "surprising@test.com",
+                "isAdmin": False
+            })
+
+        assert response.status_code == 200
+        assert response.json()["emailDelivered"] is False
+
     def test_create_admin_user(self):
         """Admin can create another admin user"""
         app.dependency_overrides[get_current_user] = mock_admin_user
@@ -379,3 +443,70 @@ class TestSendResetLink:
         response = client.post("/users/nonexistent/send-reset-link")
 
         assert response.status_code == 404
+
+    def test_send_reset_link_reports_delivery_failure(self):
+        """Sending is the whole point of this endpoint, so failure must 502."""
+        from unittest.mock import patch
+        from backend.services.email import EmailDeliveryError
+
+        app.dependency_overrides[get_current_user] = mock_admin_user
+
+        with patch(
+            "backend.services.email._send_email",
+            side_effect=EmailDeliveryError("smtp down"),
+        ):
+            response = client.post("/users/user-1/send-reset-link")
+
+        assert response.status_code == 502
+        assert "could not be sent" in response.json()["detail"].lower()
+
+    def test_send_reset_link_reports_simulation_mode(self):
+        """Simulation mode is not a real delivery and must not claim success."""
+        from unittest.mock import patch, AsyncMock
+
+        app.dependency_overrides[get_current_user] = mock_admin_user
+
+        with patch(
+            "backend.services.email._send_email",
+            new_callable=AsyncMock,
+            return_value=False,
+        ):
+            response = client.post("/users/user-1/send-reset-link")
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["emailDelivered"] is False
+        # The message is what the UI shows the admin, so it must not claim the
+        # mail was sent when simulation mode swallowed it.
+        assert "simulation mode" in body["message"].lower()
+
+    def test_send_reset_link_reports_success(self):
+        from unittest.mock import patch, AsyncMock
+
+        app.dependency_overrides[get_current_user] = mock_admin_user
+
+        with patch(
+            "backend.services.email._send_email",
+            new_callable=AsyncMock,
+            return_value=True,
+        ):
+            response = client.post("/users/user-1/send-reset-link")
+
+        assert response.status_code == 200
+        body = response.json()
+        assert body["emailDelivered"] is True
+        assert body["message"] == "Password reset link sent successfully"
+
+    def test_send_reset_link_unexpected_error_is_a_502_not_a_500(self):
+        from unittest.mock import patch, AsyncMock
+
+        app.dependency_overrides[get_current_user] = mock_admin_user
+
+        with patch(
+            "backend.services.email._send_email",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("executor shut down"),
+        ):
+            response = client.post("/users/user-1/send-reset-link")
+
+        assert response.status_code == 502
