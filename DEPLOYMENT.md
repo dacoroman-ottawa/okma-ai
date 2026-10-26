@@ -119,6 +119,24 @@ are written to the container logs and never sent. The effective configuration is
 at startup - check it with `docker compose logs backend | grep -i email`. Set
 `LOG_LEVEL` (default `INFO`) to change application log verbosity.
 
+**Gmail App Passwords.** With `SMTP_HOST=smtp.gmail.com`, `SMTP_PASSWORD` has to be an
+App Password - Gmail stopped accepting account passwords over SMTP in 2022. Generate one
+at <https://myaccount.google.com/apppasswords>; the account needs 2-Step Verification
+enabled or that page is unavailable. Google shows the 16-character value **once**, and
+afterwards the management page lists only each password's name and creation date, so put
+it in a password manager at the moment you create it. A lost App Password cannot be
+recovered, only revoked and replaced. Turning 2-Step Verification off deletes every App
+Password on the account and silently stops delivery.
+
+Rotating the credential needs no rebuild: update `SMTP_PASSWORD` in `.env` and run
+`docker compose -f docker-compose.prod.yml up -d backend`.
+
+A personal Gmail account is workable for development but a poor production sender. It is
+capped at roughly 500 recipients per day, mail leaves from an individual's address rather
+than the academy's, and the credential dies with that individual's account. For a real
+deployment prefer a transactional provider (SES, Postmark, Resend) or a Workspace account
+with its own credential.
+
 **Important:** Use strong, unique values for `POSTGRES_PASSWORD` and `SECRET_KEY` in production.
 
 Generate a secure secret key:
